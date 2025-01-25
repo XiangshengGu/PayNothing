@@ -3,11 +3,11 @@ Home page(default)
 ------------------------------------------------------------------------
 The center of the screen 
 Showing the latest single video post of an item from other users nearby.
-Showing an icon that you can tap to message the user who posted this video.
+Tap the 'message' icon to message the user who posted this video.
 Scroll up to display next video post.
-Tap the 'save' icon to save the current video post.
+Tap the 'save' icon on the left corner to save the current video post.
 ------------------------------------------------------------------------
-(Bottom tabs: Home; Post(+); Inbox)
+(Bottom tabs: Home; Post(+); Inbox; User Profile)
 
 Top tabs
 Latest: Sort by videos uploading time.
