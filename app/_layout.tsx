@@ -5,7 +5,7 @@ export default function RootLayout() {
   return (
     <Tabs>
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           tabBarIcon: () => (
             <Image
@@ -43,7 +43,7 @@ export default function RootLayout() {
           tabBarIcon: () => (
             <Image
               source={require("../assets/images/profile.png")}
-              style={{ width: 24, height: 24 }}
+              style={{ width: 30, height: 30 }}
             />
           ),
         }}
