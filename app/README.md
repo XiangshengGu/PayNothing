@@ -43,3 +43,17 @@ The home page consists of two main sections: the **top tabs** and **bottom tabs*
 - **Post**: Users can record and upload videos directly from their phone. After recording, a confirmation tap will upload the video.
 - **Inbox**: For messaging and interaction between users (Inquires about items, schudule a time and location for local meetups, etc.).
 - **Profile**: Users can manage their account, view saved posts, and set their location.
+
+
+
+# Page Designs
+
+### Login Page:
+<img src="../LoginPage.png" alt="Login Page" width="200"/>
+
+### Home Page:
+<img src="../HomePage.png" alt="Home Page" width="200"/>
+
+### Upload Page:
+<img src="../UploadPage.png" alt="Upload Page" width="200"/>
+
