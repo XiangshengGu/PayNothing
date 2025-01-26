@@ -1,4 +1,4 @@
-import { View, TextInput, StyleSheet, Button, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Button, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import React, { useState } from 'react';
 import { FIREBASE_AUTH } from '../FirebaseConfig';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
@@ -39,15 +39,33 @@ const Login = () => {
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView behavior="padding">
-        <TextInput value={email} style={styles.input} placeholder="Email" autoCapitalize="none" onChangeText={(text) => setEmail(text)}></TextInput>
-        <TextInput secureTextEntry={true} value={password} style={styles.input} placeholder="Password" autoCapitalize="none" onChangeText={(text) => setPassword(text)}></TextInput>
+        <Text style={styles.title}>Welcome to PayNothing!</Text>
+
+        <Text style={styles.inputTitle}>Email</Text>
+        <TextInput
+          value={email}
+          style={styles.input}
+          placeholder="Enter your email address here"
+          autoCapitalize="none"
+          onChangeText={(text) => setEmail(text)}
+        />
+
+        <Text style={styles.inputTitle}>Password</Text>
+        <TextInput
+          secureTextEntry={true}
+          value={password}
+          style={styles.input}
+          placeholder="Enter your password here"
+          autoCapitalize="none"
+          onChangeText={(text) => setPassword(text)}
+        />
 
         {loading ? (
           <ActivityIndicator size="large" color="#0000ff" />
         ) : (
           <>
             <Button title="Login" onPress={signIn} />
-            <Button title="Create account" onPress={signUp} />
+            <Button title="Create an account" onPress={signUp} />
           </>
         )}
       </KeyboardAvoidingView>
@@ -62,6 +80,17 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     flex: 1,
     justifyContent: 'center'
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  inputTitle: {
+    fontSize: 16,
+    marginBottom: 4,
+    fontWeight: 'bold',
   },
   input: {
     marginVertical: 4,
