@@ -1,19 +1,62 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from "react-native";
-import { useState } from "react";
-
-const Latest = () => (
-  <View style={styles.scene}>
-    <Text>Latest Videos</Text>
-  </View>
-);
-
-const Trending = () => (
-  <View style={styles.scene}>
-    <Text>Trending Videos</Text>
-  </View>
-);
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, FlatList } from "react-native";
+import { Video } from 'expo-av';
+import { useEffect, useState } from "react";
+import { FIRESTORE_DB } from "../FirebaseConfig";
+import { collection, getDocs } from "firebase/firestore";
+import React from 'react';
 
 export default function Home() {
+  const video = React.useRef(null);
+  const [videos, setVideos] = useState([]);
+
+  const getData = async () => {
+    try {
+      const videosCollection = await getDocs(collection(FIRESTORE_DB, "videos"));
+      const videoData = [];
+      videosCollection.forEach((doc) => {
+        const data = doc.data();
+        videoData.push({
+          id: doc.id,
+          title: data.title,
+          price: data.price,
+          videoUrl: data.video_url,
+        });
+      });
+      setVideos(videoData);
+    } catch (error) {
+      console.error("Error fetching documents: ", error);
+    }
+  };
+
+  useEffect(() => {
+    getData();
+  }, []);
+
+  const Latest = () => (
+    <FlatList
+      data={videos}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <View style={styles.card}>
+          <Text style={styles.title}>Title: {item.title}</Text>
+          <Text style={styles.price}>Price: {item.price}</Text>
+          <Video
+            ref={video}
+            style={styles.video}
+            source={{ uri: item.videoUrl }}
+            useNativeControls
+          />
+        </View>
+      )}
+    />
+  );
+
+  const Trending = () => (
+    <View style={styles.scene}>
+      <Text>Trending Videos</Text>
+    </View>
+  );
+
   const [activeTab, setActiveTab] = useState("latest"); // To track active tab
 
   const renderContent = () => {
@@ -84,7 +127,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "rgb(0, 0, 0)",
+    backgroundColor: "rgb(255, 255, 255)",
   },
   topBar: {
     height: 60,
@@ -132,4 +175,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  video: {
+    width: 300,
+    height: 200,
+    backgroundColor: "blue",
+  }
 });
