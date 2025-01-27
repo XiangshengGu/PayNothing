@@ -1,4 +1,4 @@
-// Citation: Codes below are adapted and modified from 
+// Citation: The code below refers to
 // Super Easy React Native AUTHENTICATION with Firebase:
 // https://www.youtube.com/watch?v=ONAVmsGW6-M
 // And from Sample Usage in Expo Location Documentation: 
@@ -95,21 +95,19 @@ const [email, setEmail] = useState("");
   };
 
   const handleEditUsername = async () => {
-    if (!isEditingUsername) {
-      setIsEditingUsername(true);
-      return;
-    }
-
     if (user) {
       try {
         await updateProfile(user, { displayName: username });
-        setIsEditingUsername(false);
         Alert.alert("Username Updated", "Your username has been updated.");
       } catch (error: any) {
         Alert.alert("Error", error.message);
       }
     }
   };
+
+  const handleUsernameClick = () => {
+    setIsEditingUsername(true);
+  }
 
   if (!user) {
     // Authentication Form
@@ -168,12 +166,19 @@ const [email, setEmail] = useState("");
               style={styles.usernameInput}
               value={username}
               onChangeText={(text) => setUsername(text)}
-              onSubmitEditing={handleEditUsername}
+              onBlur={() => {
+                handleEditUsername();
+                setIsEditingUsername(false);
+              }}
             />
           ) : (
-            <Text style={styles.username}>{username}</Text>
+            <Text style={styles.username} onPress={handleUsernameClick}>
+              {username}
+            </Text>
           )}
-          <Text style={styles.usernameHint}>(You can click on the username to change it)</Text>
+          <TouchableOpacity onPress={handleUsernameClick}>
+            <Text style={styles.usernameHint}>(You can click on the username to change it)</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity onPress={handleEditLocation}>
             <Text style={styles.location}>Location: {location}</Text>
