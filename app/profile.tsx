@@ -20,6 +20,7 @@ const [email, setEmail] = useState("");
   const [username, setUsername] = useState("newbie");
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [savedPosts, setSavedPosts] = useState<string[]>(["Saved post 1","Saved post 2","Saved post 3","Saved post 4"]);
+  const [yourPosts, setYourPosts] = useState<string[]>(["Your post 1","Your post 2","Your post 3"]);
 
   useEffect(() => {
     const unsubscribe = FIREBASE_AUTH.onAuthStateChanged((currentUser) => {
@@ -159,6 +160,9 @@ const [email, setEmail] = useState("");
             source={require("../assets/images/default-profile.png")}
             style={styles.profileImage}
           />
+        </TouchableOpacity>
+
+        <View style={styles.profileTextContainer}>
           {isEditingUsername ? (
             <TextInput
               style={styles.usernameInput}
@@ -169,11 +173,12 @@ const [email, setEmail] = useState("");
           ) : (
             <Text style={styles.username}>{username}</Text>
           )}
-        </TouchableOpacity>
+          <Text style={styles.usernameHint}>(You can click on the username to change it)</Text>
 
-        <TouchableOpacity onPress={handleEditLocation}>
-          <Text style={styles.location}>{location}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={handleEditLocation}>
+            <Text style={styles.location}>Location: {location}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Saved Posts */}
@@ -181,6 +186,22 @@ const [email, setEmail] = useState("");
         <Text style={styles.savedPostsTitle}>Saved Posts</Text>
         <FlatList
           data={savedPosts}
+          keyExtractor={(item, index) => index.toString()}
+          numColumns={2}
+          columnWrapperStyle={styles.gridRow}
+          renderItem={({ item }) => (
+            <View style={styles.gridItem}>
+              <Text style={styles.savedPostItem}>{item}</Text>
+            </View>
+          )}
+        />
+      </View>
+
+      {/* Your Posts */}
+      <View style={styles.savedPostsContainer}>
+        <Text style={styles.savedPostsTitle}>Your Posts</Text>
+        <FlatList
+          data={yourPosts}
           keyExtractor={(item, index) => index.toString()}
           numColumns={2}
           columnWrapperStyle={styles.gridRow}
@@ -251,6 +272,10 @@ const styles = StyleSheet.create({
     profileImageContainer: {
       flexDirection: "row",
       alignItems: "center",
+      marginRight: 20,
+    },
+    profileTextContainer: {
+      flex: 1,
     },
     profileImage: {
       width: 50,
@@ -259,8 +284,14 @@ const styles = StyleSheet.create({
     },
     username: {
       marginLeft: 10,
+      marginTop: 10,
       fontSize: 18,
       fontWeight: "bold",
+    },
+    usernameHint: {
+      marginLeft: 10,
+      fontSize: 12,
+      color: "rgb(100, 100, 100)",
     },
     usernameInput: {
       borderBottomWidth: 1,
@@ -272,9 +303,12 @@ const styles = StyleSheet.create({
       fontSize: 16,
       fontWeight: "bold",
       color: "rgb(0, 0, 0)",
+      marginLeft: 10,
+      marginTop: 10,
     },
     savedPostsContainer: {
       flex: 1,
+      marginTop: 30,
     },
     savedPostsTitle: {
       fontSize: 18,
