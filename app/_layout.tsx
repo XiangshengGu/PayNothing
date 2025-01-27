@@ -5,8 +5,9 @@ export default function RootLayout() {
   return (
     <Tabs>
       <Tabs.Screen
-        name="home"
+        name="index"
         options={{
+          tabBarLabel: "Home",
           tabBarIcon: () => (
             <Image
               source={require("../assets/images/home.png")}
@@ -18,6 +19,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="post"
         options={{
+          tabBarLabel: "Post",
           tabBarIcon: () => (
             <Image
               source={require("../assets/images/post.png")}
@@ -29,6 +31,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="inbox"
         options={{
+          tabBarLabel: "Inbox",
           tabBarIcon: () => (
             <Image
               source={require("../assets/images/inbox.png")}
@@ -40,6 +43,7 @@ export default function RootLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          tabBarLabel: "Profile",
           tabBarIcon: () => (
             <Image
               source={require("../assets/images/profile.png")}
