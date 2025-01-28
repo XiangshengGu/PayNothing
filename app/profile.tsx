@@ -239,6 +239,10 @@ export default function Profile() {
             Age: {age || "Add your age"}
           </Text>
         )}
+
+        <TouchableOpacity onPress={handleUsernameClick}>
+          <Text style={styles.editInfoHint}>(You can click on the information above to change it)</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Location Section */}
@@ -347,16 +351,19 @@ const styles = StyleSheet.create({
       height: 50,
       borderRadius: 25,
     },
+    inputSection: {
+      marginBottom: 10,
+    },
+    inputSectionTitle: {
+      fontSize: 18,
+      fontWeight: "bold",
+      marginBottom: 10,
+    },
     username: {
       marginLeft: 10,
       marginTop: 10,
       fontSize: 18,
       fontWeight: "bold",
-    },
-    usernameHint: {
-      marginLeft: 10,
-      fontSize: 12,
-      color: "rgb(100, 100, 100)",
     },
     usernameInput: {
       borderBottomWidth: 1,
@@ -364,12 +371,20 @@ const styles = StyleSheet.create({
       fontSize: 18,
       marginLeft: 10,
     },
+    editableField: {
+      fontSize: 16,
+      paddingVertical: 5,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(0,0,0,0.1)",
+    },
     location: {
       fontSize: 16,
-      fontWeight: "bold",
       color: "rgb(0, 0, 0)",
-      marginLeft: 10,
       marginTop: 10,
+    },
+    editInfoHint: {
+      fontSize: 12,
+      color: "rgb(100, 100, 100)",
     },
     savedPostsContainer: {
       flex: 1,
