@@ -246,9 +246,9 @@ export default function Profile() {
       </View>
 
       {/* Location Section */}
-      <View style={styles.inputSection}>
+      <TouchableOpacity onPress={handleEditLocation}>
         <Text style={styles.location}>Location: {location}</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Saved Posts */}
       <View style={styles.savedPostsContainer}>
