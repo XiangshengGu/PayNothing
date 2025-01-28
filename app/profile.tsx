@@ -6,27 +6,39 @@
 
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
-import { FIREBASE_AUTH } from "../FirebaseConfig";
+import { FIREBASE_AUTH, FIRESTORE_DB } from "../FirebaseConfig";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, updateProfile } from "firebase/auth";
+import { doc, setDoc, addDoc } from "firebase/firestore";
 import * as Location from "expo-location";
 
 export default function Profile() {
-const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [location, setLocation] = useState("Unknown");
   const [username, setUsername] = useState("newbie");
   const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [savedPosts, setSavedPosts] = useState<string[]>(["Saved post 1","Saved post 2","Saved post 3","Saved post 4"]);
-  const [yourPosts, setYourPosts] = useState<string[]>(["Your post 1","Your post 2","Your post 3"]);
+  const [gender, setGender] = useState("");
+  const [isEditingGender, setIsEditingGender] = useState(false);
+  const [age, setAge] = useState("");
+  const [isEditingAge, setIsEditingAge] = useState(false);
+  const [location, setLocation] = useState("Unknown");
+  const [savedPosts, setSavedPosts] = useState<string[]>(["Saved post 1", "Saved post 2", "Saved post 3", "Saved post 4"]);
+  const [yourPosts, setYourPosts] = useState<string[]>(["Your post 1", "Your post 2", "Your post 3"]);
 
   useEffect(() => {
-    const unsubscribe = FIREBASE_AUTH.onAuthStateChanged((currentUser) => {
+    const unsubscribe = FIREBASE_AUTH.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
-      if (currentUser && currentUser.displayName) {
-        setUsername(currentUser.displayName);
+      if (currentUser) {
+        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUsername(userData.username || "newbie");
+          setGender(userData.gender || "");
+          setAge(userData.age ? userData.age.toString() : "");
+          setLocation(userData.location || "Unknown");
+        }
       }
     });
     return unsubscribe; // Cleanup on component unmount
@@ -94,11 +106,15 @@ const [email, setEmail] = useState("");
     }
   };
 
-  const handleEditUsername = async () => {
+  const handleUpdateUserData = async (field: string, value: string | number) => {
     if (user) {
       try {
-        await updateProfile(user, { displayName: username });
-        Alert.alert("Username Updated", "Your username has been updated.");
+        await setDoc(
+          doc(FIRESTORE_DB, "users", user.uid),
+          { [field]: value },
+          { merge: true } // Merge with existing data
+        );
+        Alert.alert("Success", `${field} has been updated.`);
       } catch (error: any) {
         Alert.alert("Error", error.message);
       }
@@ -108,6 +124,14 @@ const [email, setEmail] = useState("");
   const handleUsernameClick = () => {
     setIsEditingUsername(true);
   }
+
+  const handleGenderClick = () => {
+    setIsEditingGender(true);
+  };
+
+  const handleAgeClick = () => {
+    setIsEditingAge(true);
+  };
 
   if (!user) {
     // Authentication Form
@@ -148,11 +172,11 @@ const [email, setEmail] = useState("");
   // User Profile
   return (
     <View style={styles.container}>
-      {/* Top Section */}
+      {/* Username Edit Section */}
       <View style={styles.profileHeader}>
         <TouchableOpacity
           style={styles.profileImageContainer}
-          onPress={handleEditUsername}
+          onPress={handleUsernameClick}
         >
           <Image
             source={require("../assets/images/default-profile.png")}
@@ -167,7 +191,7 @@ const [email, setEmail] = useState("");
               value={username}
               onChangeText={(text) => setUsername(text)}
               onBlur={() => {
-                handleEditUsername();
+                handleUpdateUserData("username", username);
                 setIsEditingUsername(false);
               }}
             />
@@ -176,14 +200,50 @@ const [email, setEmail] = useState("");
               {username}
             </Text>
           )}
-          <TouchableOpacity onPress={handleUsernameClick}>
-            <Text style={styles.usernameHint}>(You can click on the username to change it)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleEditLocation}>
-            <Text style={styles.location}>Location: {location}</Text>
-          </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Gender Edit Section */}
+      <View style={styles.inputSection}>
+        <Text style={styles.inputSectionTitle}>Personal Information</Text>
+
+        {isEditingGender ? (
+          <TextInput
+            style={styles.input}
+            value={gender}
+            onChangeText={(text) => setGender(text)}
+            onBlur={() => {
+              handleUpdateUserData("gender", gender);
+              setIsEditingGender(false);
+            }}
+          />
+        ) : (
+          <Text style={styles.editableField} onPress={handleGenderClick}>
+            Gender: {gender || "Add your gender"}
+          </Text>
+        )}
+
+        {isEditingAge ? (
+          <TextInput
+            style={styles.input}
+            value={age}
+            keyboardType="numeric"
+            onChangeText={(text) => setAge(text)}
+            onBlur={() => {
+              handleUpdateUserData("age", parseInt(age));
+              setIsEditingAge(false);
+            }}
+          />
+        ) : (
+          <Text style={styles.editableField} onPress={handleAgeClick}>
+            Age: {age || "Add your age"}
+          </Text>
+        )}
+      </View>
+
+      {/* Location Section */}
+      <View style={styles.inputSection}>
+        <Text style={styles.location}>Location: {location}</Text>
       </View>
 
       {/* Saved Posts */}
