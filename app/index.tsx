@@ -97,7 +97,7 @@ export default function Home() {
         ref={(ref) => (videoRefs.current[index] = ref)}
         source={{ uri: item.videoUrl }}
         style={styles.video}
-        resizeMode="cover"
+        resizeMode="contain"
         isLooping
         onPlaybackStatusUpdate={(status) => {
           if (status.didJustFinish) {
@@ -196,6 +196,7 @@ export default function Home() {
         viewabilityConfig={{
           viewAreaCoveragePercentThreshold: 80,
         }}
+        style={{ flex: 1 }}
       />
     </View>
   );
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width,
-    height,
+    height: height - 60 - 50 - 64,  // 60 search bar, 50 navig bar, 65 each page titlebar
     justifyContent: "flex-end",
     alignItems: "center",
   },
