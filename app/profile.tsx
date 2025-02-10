@@ -8,7 +8,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
 import { FIREBASE_AUTH, FIRESTORE_DB } from "../FirebaseConfig";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, updateProfile } from "firebase/auth";
-import { doc, setDoc, addDoc } from "firebase/firestore";
+import { doc, setDoc, addDoc, getDoc } from "firebase/firestore";
 import * as Location from "expo-location";
 
 export default function Profile() {
