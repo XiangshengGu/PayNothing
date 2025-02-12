@@ -18,6 +18,7 @@ export default function Home() {
   const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
   const [likes, setLikes] = useState<{ [key: string]: number }>({});
   const videoRefs = useRef<(Video | null)[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch video posts from Firestore
   const getData = async () => {
@@ -89,6 +90,13 @@ export default function Home() {
         }
       }
     });
+  };
+
+  // Pull down to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await getData();
+    setRefreshing(false);
   };
 
   const renderVideo = ({ item, index }: { item: VideoItem; index: number }) => (
@@ -197,6 +205,8 @@ export default function Home() {
         viewabilityConfig={{
           viewAreaCoveragePercentThreshold: 80,
         }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         style={{ flex: 1 }}
       />
     </View>
