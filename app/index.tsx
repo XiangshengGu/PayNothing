@@ -8,7 +8,7 @@ import { FIRESTORE_DB } from "../FirebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import React from "react";
 
-const { width, height } = Dimensions.get("window");
+const { width: winWidth, height: winHeight } = Dimensions.get("window");
 
 export default function Home() {
   const [videos, setVideos] = useState([]);
@@ -244,8 +244,8 @@ const styles = StyleSheet.create({
     color: "rgb(0, 0, 0)",
   },
   videoContainer: {
-    width,
-    height: height - 60 - 50 - 64,  // 60 search bar, 50 navig bar, 65 each page titlebar
+    width: winWidth,
+    height: winHeight - 60 - 50 - 64,  // 60 search bar, 50 navig bar, 65 each page titlebar
     justifyContent: "flex-end",
     alignItems: "center",
   },
@@ -255,8 +255,8 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: "absolute",
-    width,
-    height,
+    width: winWidth,
+    height: winHeight,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
