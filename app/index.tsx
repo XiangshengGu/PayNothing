@@ -1,35 +1,36 @@
 // Citation: Codes below are created with the assistance of
 // OpenAI's ChatGPT (2025).
 
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput } from "react-native";
-import { Video } from "expo-av";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
+import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useEffect, useRef, useState } from "react";
-import { FIRESTORE_DB } from "../FirebaseConfig";
 import { collection, getDocs } from "firebase/firestore";
 import React from "react";
+import { FIRESTORE_DB } from "../FirebaseConfig";
+import { VideoItem } from "./data/models";
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
 
 export default function Home() {
-  const [videos, setVideos] = useState([]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [activeTab, setActiveTab] = useState("latest");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredVideos, setFilteredVideos] = useState([]);
-  const [likes, setLikes] = useState({});
-  const videoRefs = useRef([]);
+  const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
+  const [likes, setLikes] = useState<{ [key: string]: number }>({});
+  const videoRefs = useRef<(Video | null)[]>([]);
 
   // Fetch video posts from Firestore
   const getData = async () => {
     try {
       const videosCollection = await getDocs(collection(FIRESTORE_DB, "videos"));
-      const videoData = [];
+      const videoData: VideoItem[] = [];
       videosCollection.forEach((doc) => {
         const data = doc.data();
         videoData.push({
           id: doc.id,
           title: data.title,
           description: data.description || "Please message me for more information.",
-          uploadTime: data.upload_time, // Assuming timestamp is stored
+          uploadTime: data.upload_time || 0, // Assuming timestamp is stored
           likes: data.likes || 0,
           videoUrl: data.video_url,
         });
@@ -46,7 +47,7 @@ export default function Home() {
   }, []);
 
   // Handle likes
-  const handleLike = (id) => {
+  const handleLike = (id: string) => {
     setLikes((prevLikes) => ({
       ...prevLikes,
       [id]: (prevLikes[id] || 0) + 1,
@@ -65,7 +66,7 @@ export default function Home() {
   };
 
   // Filter videos by search query
-  const handleSearch = (query) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (query.trim() === "") {
       setFilteredVideos(videos);
@@ -78,7 +79,7 @@ export default function Home() {
   };
 
   // Handle video playback
-  const handleViewableItemsChanged = ({ viewableItems }) => {
+  const handleViewableItemsChanged = ({ viewableItems } : { viewableItems: ViewToken[] }) => {
     videoRefs.current.forEach((ref, index) => {
       if (ref) {
         if (viewableItems.some((item) => item.key === filteredVideos[index]?.id)) {
@@ -90,18 +91,18 @@ export default function Home() {
     });
   };
 
-  const renderVideo = ({ item, index }) => (
+  const renderVideo = ({ item, index }: { item: VideoItem; index: number }) => (
     <View style={styles.videoContainer}>
       {/* Video Component */}
       <Video
         ref={(ref) => (videoRefs.current[index] = ref)}
         source={{ uri: item.videoUrl }}
         style={styles.video}
-        resizeMode="contain"
+        resizeMode={ResizeMode.CONTAIN}
         isLooping
         onPlaybackStatusUpdate={(status) => {
           if (status.didJustFinish) {
-            videoRefs.current[index].replayAsync();
+            videoRefs.current[index]?.replayAsync();
           }
         }}
       />
