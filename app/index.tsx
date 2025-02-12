@@ -1,8 +1,8 @@
 // Citation: Codes below are created with the assistance of
 // OpenAI's ChatGPT (2025).
 
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
+import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import React from "react";
@@ -10,6 +10,8 @@ import { FIRESTORE_DB } from "../FirebaseConfig";
 import { VideoItem } from "./data/models";
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
+// adjust by OS, 60 search bar, 50 navig bar, 65 each page titlebar
+const videoContainerHeight = Platform.OS === "ios" ? winHeight - 44 - 60 - 50 - 64 : winHeight - 24 - 50 - 50 - 64;
 
 export default function Home() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
@@ -80,7 +82,7 @@ export default function Home() {
   };
 
   // Handle video playback
-  const handleViewableItemsChanged = ({ viewableItems } : { viewableItems: ViewToken[] }) => {
+  const handleViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {
     videoRefs.current.forEach((ref, index) => {
       if (ref) {
         if (viewableItems.some((item) => item.key === filteredVideos[index]?.id)) {
@@ -256,7 +258,7 @@ const styles = StyleSheet.create({
   },
   videoContainer: {
     width: winWidth,
-    height: winHeight - 60 - 50 - 64,  // 60 search bar, 50 navig bar, 65 each page titlebar
+    height: videoContainerHeight,
     justifyContent: "flex-end",
     alignItems: "center",
   },

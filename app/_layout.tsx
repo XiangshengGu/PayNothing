@@ -3,7 +3,16 @@ import { Image } from "react-native";
 
 export default function RootLayout() {
   return (
-    <Tabs>
+    <Tabs
+      screenOptions={{
+        tabBarStyle: {
+          height: 50,
+        },
+        headerStyle: {
+          height: 65,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
