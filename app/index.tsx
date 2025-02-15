@@ -4,6 +4,7 @@
 import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native"; // Import useFocusEffect
 import { collection, getDocs } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB } from "../FirebaseConfig";
@@ -51,6 +52,18 @@ export default function Home() {
   useEffect(() => {
     getData();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      // Stop all videos when the screen is no longer focused
+      return () => {
+        videoRefs.current.forEach((ref) => {
+          ref?.pauseAsync();  // Pause all videos when navigating away from the screen
+        });
+        setPlayStatus(new Array(videoRefs.current.length).fill(false));
+      };
+    }, [])
+  );
 
   // Handle likes
   const handleLike = (id: string) => {
