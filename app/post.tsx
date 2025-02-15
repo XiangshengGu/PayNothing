@@ -101,7 +101,9 @@ export default function Post() {
       const docRef = await addDoc(collection(FIRESTORE_DB, "videos"), {
         video_url: downloadURL,
         title: "New Video",
-        price: 0,
+        description: "Please message me for more information",
+        upload_time: Date.now(),
+        likes: 0,
       });
       console.log("Record created:", docRef.id);
       Alert.alert("Upload successfully", "The video has been saved to the database");
