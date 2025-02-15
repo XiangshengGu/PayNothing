@@ -20,6 +20,8 @@ export default function Home() {
   const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
   const [likes, setLikes] = useState<{ [key: string]: number }>({});
   const videoRefs = useRef<(Video | null)[]>([]);
+  const [curPlayingIndex, setCurPlayingIndex] = useState<number | null>(null); // save the index of the current playing video
+  const [playStatus, setPlayStatus] = useState<boolean[]>([]);  // store all videos' status
   const [refreshing, setRefreshing] = useState(false);
 
   // Fetch video posts from Firestore
@@ -32,14 +34,15 @@ export default function Home() {
         videoData.push({
           id: doc.id,
           title: data.title,
-          description: data.description || "Please message me for more information.",
-          uploadTime: data.upload_time || 0, // Assuming timestamp is stored
-          likes: data.likes || 0,
+          description: data?.description || "Please message me for more information.",
+          uploadTime: data?.upload_time || 0, // Assuming timestamp is stored
+          likes: data?.likes || 0,
           videoUrl: data.video_url,
         });
       });
       setVideos(videoData);
       setFilteredVideos(videoData);
+      setPlayStatus(new Array(videoData.length).fill(false));
     } catch (error) {
       console.error("Error fetching documents: ", error);
     }
@@ -87,11 +90,25 @@ export default function Home() {
       if (ref) {
         if (viewableItems.some((item) => item.key === filteredVideos[index]?.id)) {
           ref.playAsync();
+          setCurPlayingIndex(index);
+          setPlayStatus((prev) => prev.map((v, i) => (i === index ? true : false)));
         } else {
           ref.pauseAsync();
         }
       }
     });
+  };
+
+  // toggle to Play or Pause
+  const togglePlayPause = (index: number) => {
+    const isPlaying = playStatus[index];
+    if (isPlaying) {
+      videoRefs.current[index]?.pauseAsync();
+    }
+    else {
+      videoRefs.current[index]?.playAsync();
+    }
+    setPlayStatus((prev) => prev.map((v, i) => (i === index ? !isPlaying : v)));
   };
 
   // Pull down to refresh
@@ -118,6 +135,14 @@ export default function Home() {
       />
       {/* Title and Description */}
       <View style={styles.overlay}>
+        <TouchableOpacity
+          style={styles.playPauseButton}
+          onPress={() => togglePlayPause(index)}
+        >
+          <Text style={styles.playPauseText}>
+            { playStatus[index] ? "Pause" : "Play" }
+          </Text>
+        </TouchableOpacity>
         <View style={styles.textContainer}>
           <Text style={styles.videoTitle}>{item.title}</Text>
           <Text style={styles.videoDescription}>{item.description}</Text>
@@ -269,7 +294,7 @@ const styles = StyleSheet.create({
   overlay: {
     position: "absolute",
     width: winWidth,
-    height: winHeight,
+    height: videoContainerHeight,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -298,5 +323,20 @@ const styles = StyleSheet.create({
     color: "rgb(255, 255, 255)",
     fontSize: 14,
     marginTop: 5,
+  },
+  playPauseButton: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    // transform: [{ translateX: "-50%" }, { translateY: "-50%" }],
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    paddingVertical: 5,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  playPauseText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });
