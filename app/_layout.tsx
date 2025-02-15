@@ -6,10 +6,10 @@ export default function RootLayout() {
     <Tabs
       screenOptions={{
         tabBarStyle: {
-          height: 50,
+          height: 65,
         },
         headerStyle: {
-          height: 65,
+          height: 50,
         },
       }}
     >
