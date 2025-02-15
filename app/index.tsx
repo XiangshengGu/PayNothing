@@ -5,7 +5,7 @@ import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimension
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native"; // Import useFocusEffect
-import { collection, getDocs } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB } from "../FirebaseConfig";
 import { VideoItem } from "./data/models";
@@ -25,32 +25,24 @@ export default function Home() {
   const [playStatus, setPlayStatus] = useState<boolean[]>([]);  // store all videos' status
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch video posts from Firestore
-  const getData = async () => {
-    try {
-      const videosCollection = await getDocs(collection(FIRESTORE_DB, "videos"));
-      const videoData: VideoItem[] = [];
-      videosCollection.forEach((doc) => {
-        const data = doc.data();
-        videoData.push({
-          id: doc.id,
-          title: data.title,
-          description: data?.description || "Please message me for more information.",
-          uploadTime: data?.upload_time || 0, // Assuming timestamp is stored
-          likes: data?.likes || 0,
-          videoUrl: data.video_url,
-        });
-      });
+  // Fetch video posts from Firestore with real-time updates
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(FIRESTORE_DB, "videos"), (snapshot) => {
+      const videoData: VideoItem[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        title: doc.data().title,
+        description: doc.data().description || "Please message me for more information.",
+        uploadTime: doc.data().upload_time || 0,
+        likes: doc.data().likes || 0,
+        videoUrl: doc.data().video_url,
+      }));
+
       setVideos(videoData);
       setFilteredVideos(videoData);
       setPlayStatus(new Array(videoData.length).fill(false));
-    } catch (error) {
-      console.error("Error fetching documents: ", error);
-    }
-  };
+    });
 
-  useEffect(() => {
-    getData();
+    return () => unsubscribe();
   }, []);
 
   useFocusEffect(
@@ -74,7 +66,7 @@ export default function Home() {
   };
 
   // Sort videos based on active tab
-  const sortVideos = () => {
+  useEffect(() => {
     let sortedVideos = [...videos];
     if (activeTab === "latest") {
       sortedVideos.sort((a, b) => b.uploadTime - a.uploadTime);
@@ -82,7 +74,7 @@ export default function Home() {
       sortedVideos.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     }
     setFilteredVideos(sortedVideos);
-  };
+  }, [activeTab, videos]);
 
   // Filter videos by search query
   const handleSearch = (query: string) => {
@@ -117,8 +109,7 @@ export default function Home() {
     const isPlaying = playStatus[index];
     if (isPlaying) {
       videoRefs.current[index]?.pauseAsync();
-    }
-    else {
+    } else {
       videoRefs.current[index]?.playAsync();
     }
     setPlayStatus((prev) => prev.map((v, i) => (i === index ? !isPlaying : v)));
@@ -127,7 +118,6 @@ export default function Home() {
   // Pull down to refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    await getData();
     setRefreshing(false);
   };
 
