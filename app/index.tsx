@@ -4,11 +4,12 @@
 import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native"; // Import useFocusEffect
+import { useFocusEffect, useNavigation } from "@react-navigation/native"; // Import useFocusEffect
 import { collection, onSnapshot } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB } from "../FirebaseConfig";
 import { VideoItem } from "./data/models";
+import { useRouter } from "expo-router";
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
 // adjust by OS, 60 search bar, 50 navig bar, 65 each page titlebar
@@ -24,6 +25,8 @@ export default function Home() {
   const [curPlayingIndex, setCurPlayingIndex] = useState<number | null>(null); // save the index of the current playing video
   const [playStatus, setPlayStatus] = useState<boolean[]>([]);  // store all videos' status
   const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
+  const router = useRouter();
 
   // Fetch video posts from Firestore with real-time updates
   useEffect(() => {
@@ -31,6 +34,7 @@ export default function Home() {
       const videoData: VideoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         title: doc.data().title,
+        username: doc.data().username || "Unknown User",
         description: doc.data().description || "Please message me for more information.",
         uploadTime: doc.data().upload_time || 0,
         likes: doc.data().likes || 0,
@@ -138,6 +142,11 @@ export default function Home() {
       />
       {/* Title and Description */}
       <View style={styles.overlay}>
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: "/inbox", params: { senderId: item.id } })}
+        >
+          <Text style={styles.username}>{item.username}</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.playPauseButton}
           onPress={() => togglePlayPause(index)}
