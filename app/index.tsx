@@ -1,214 +1,88 @@
-// Citation: Codes below are created with the assistance of
-// OpenAI's ChatGPT (2025).
-
-import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput, ViewToken } from "react-native";
+import { Platform, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Image, TextInput } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React from "react";
 import { FIRESTORE_DB } from "../FirebaseConfig";
-import { VideoItem } from "./data/models";
+
+type VideoItem = {
+  id: string;
+  title: string;
+  description: string;
+  uploadTime: number;
+  likes: number;
+  videoUrl: string;
+  sender: string;
+};
+
+// Define the navigation type
+type RootStackParamList = {
+  inbox: { sender: string };
+};
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, "inbox">;
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
-// adjust by OS, 60 search bar, 50 navig bar, 65 each page titlebar
 const videoContainerHeight = Platform.OS === "ios" ? winHeight - 44 - 60 - 50 - 64 : winHeight - 24 - 50 - 50 - 64;
 
 export default function Home() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [activeTab, setActiveTab] = useState("latest");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
-  const [likes, setLikes] = useState<{ [key: string]: number }>({});
+  const navigation = useNavigation<NavigationProp>();
   const videoRefs = useRef<(Video | null)[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-
-  // Fetch video posts from Firestore
-  const getData = async () => {
-    try {
-      const videosCollection = await getDocs(collection(FIRESTORE_DB, "videos"));
-      const videoData: VideoItem[] = [];
-      videosCollection.forEach((doc) => {
-        const data = doc.data();
-        videoData.push({
-          id: doc.id,
-          title: data.title,
-          description: data.description || "Please message me for more information.",
-          uploadTime: data.upload_time || 0, // Assuming timestamp is stored
-          likes: data.likes || 0,
-          videoUrl: data.video_url,
-        });
-      });
-      setVideos(videoData);
-      setFilteredVideos(videoData);
-    } catch (error) {
-      console.error("Error fetching documents: ", error);
-    }
-  };
 
   useEffect(() => {
+    const getData = async () => {
+      try {
+        const videosCollection = await getDocs(collection(FIRESTORE_DB, "videos"));
+        const videoData = videosCollection.docs.map(doc => ({
+          id: doc.id,
+          title: doc.data().title,
+          description: doc.data().description || "Please message me for more information.",
+          uploadTime: doc.data().upload_time || 0,
+          likes: doc.data().likes || 0,
+          videoUrl: doc.data().video_url,
+          sender: doc.data().username || "Anonymous",
+        }));
+        setVideos(videoData);
+      } catch (error) {
+        console.error("Error fetching documents: ", error);
+      }
+    };
     getData();
   }, []);
 
-  // Handle likes
-  const handleLike = (id: string) => {
-    setLikes((prevLikes) => ({
-      ...prevLikes,
-      [id]: (prevLikes[id] || 0) + 1,
-    }));
-  };
-
-  // Sort videos based on active tab
-  const sortVideos = () => {
-    let sortedVideos = [...videos];
-    if (activeTab === "latest") {
-      sortedVideos.sort((a, b) => b.uploadTime - a.uploadTime);
-    } else if (activeTab === "trending") {
-      sortedVideos.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-    }
-    setFilteredVideos(sortedVideos);
-  };
-
-  // Filter videos by search query
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    if (query.trim() === "") {
-      setFilteredVideos(videos);
-    } else {
-      const filtered = videos.filter((video) =>
-        video.title.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredVideos(filtered);
-    }
-  };
-
-  // Handle video playback
-  const handleViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    videoRefs.current.forEach((ref, index) => {
-      if (ref) {
-        if (viewableItems.some((item) => item.key === filteredVideos[index]?.id)) {
-          ref.playAsync();
-        } else {
-          ref.pauseAsync();
-        }
-      }
-    });
-  };
-
-  // Pull down to refresh
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await getData();
-    setRefreshing(false);
-  };
-
   const renderVideo = ({ item, index }: { item: VideoItem; index: number }) => (
     <View style={styles.videoContainer}>
-      {/* Video Component */}
       <Video
         ref={(ref) => (videoRefs.current[index] = ref)}
         source={{ uri: item.videoUrl }}
         style={styles.video}
         resizeMode={ResizeMode.CONTAIN}
         isLooping
-        onPlaybackStatusUpdate={(status) => {
-          if (status.didJustFinish) {
-            videoRefs.current[index]?.replayAsync();
-          }
-        }}
       />
-      {/* Title and Description */}
       <View style={styles.overlay}>
         <View style={styles.textContainer}>
+          <TouchableOpacity onPress={() => navigation.navigate("inbox", { sender: item.sender })}>
+            <Text style={styles.username}>{item.sender}</Text>
+          </TouchableOpacity>
           <Text style={styles.videoTitle}>{item.title}</Text>
           <Text style={styles.videoDescription}>{item.description}</Text>
         </View>
-        {/* Like Button */}
-        <TouchableOpacity
-          style={styles.likeContainer}
-          onPress={() => handleLike(item.id)}
-        >
-          <Image
-            source={require("../assets/images/like-icon.png")}
-            style={styles.likeIcon}
-          />
-          <Text style={styles.likeCount}>
-            {likes[item.id] || item.likes || 0}
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Top bar with tabs and search bar */}
-      <View style={styles.topBar}>
-        {/* Tab Buttons */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "latest" && styles.activeTabButton,
-            ]}
-            onPress={() => {
-              setActiveTab("latest");
-              sortVideos();
-            }}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === "latest" && styles.activeTabButtonText,
-              ]}
-            >
-              Latest
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "trending" && styles.activeTabButton,
-            ]}
-            onPress={() => {
-              setActiveTab("trending");
-              sortVideos();
-            }}
-          >
-            <Text
-              style={[
-                styles.tabButtonText,
-                activeTab === "trending" && styles.activeTabButtonText,
-              ]}
-            >
-              Trending
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {/* Search Bar */}
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Looking for specific items?"
-          placeholderTextColor="#666"
-          value={searchQuery}
-          onChangeText={handleSearch}
-        />
-      </View>
-
-      {/* Video List */}
       <FlatList
-        data={filteredVideos}
+        data={videos}
         keyExtractor={(item) => item.id}
         renderItem={renderVideo}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
         decelerationRate="fast"
-        onViewableItemsChanged={handleViewableItemsChanged}
-        viewabilityConfig={{
-          viewAreaCoveragePercentThreshold: 80,
-        }}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
         style={{ flex: 1 }}
       />
     </View>
@@ -219,42 +93,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "rgb(0, 0, 0)",
-  },
-  topBar: {
-    height: 60,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    backgroundColor: "#rgba(255, 200, 0, 0.77)",
-  },
-  tabContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  tabButton: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  activeTabButton: {
-    backgroundColor: "rgb(255, 255, 255)",
-  },
-  tabButtonText: {
-    color: "rgb(255, 255, 255)",
-    fontSize: 16,
-  },
-  activeTabButtonText: {
-    color: "rgb(0, 0, 0)",
-  },
-  searchBar: {
-    flex: 1,
-    height: 40,
-    marginLeft: 10,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    backgroundColor: "rgb(255, 255, 255)",
-    color: "rgb(0, 0, 0)",
   },
   videoContainer: {
     width: winWidth,
@@ -278,6 +116,11 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
   },
+  username: {
+    color: "rgb(255, 200, 0)",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   videoTitle: {
     color: "rgb(255, 255, 255)",
     fontSize: 18,
@@ -286,17 +129,5 @@ const styles = StyleSheet.create({
   videoDescription: {
     color: "rgb(100, 100, 100)",
     fontSize: 14,
-  },
-  likeContainer: {
-    alignItems: "center",
-  },
-  likeIcon: {
-    width: 30,
-    height: 30,
-  },
-  likeCount: {
-    color: "rgb(255, 255, 255)",
-    fontSize: 14,
-    marginTop: 5,
   },
 });

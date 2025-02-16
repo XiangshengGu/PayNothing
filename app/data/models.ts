@@ -5,6 +5,7 @@ export interface VideoItem {
     uploadTime: number;
     likes: number;
     videoUrl: string;
+    sender: string;
 }
 
 export interface user {
