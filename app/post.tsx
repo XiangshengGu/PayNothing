@@ -2,9 +2,9 @@
 // Expo Camera Documentation: https://docs.expo.dev/versions/latest/sdk/camera/
 
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
-import { Video } from "expo-av";
+import { Video, ResizeMode } from "expo-av";
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../FirebaseConfig";
@@ -209,46 +209,54 @@ export default function Post() {
   return (
     <View style={styles.container}>
       {videoUri ? (
-        <View style={styles.videoPreview}>
-          <Text style={styles.uploadTitle}>Video recorded successfully!</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.commonInput}
-              placeholder="Enter video title"
-              placeholderTextColor="#bbb"
-              numberOfLines={1}
-              value={title}
-              onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
+        <ScrollView contentContainerStyle={styles.scrollViewContent}>
+          <View style={styles.videoPreview}>
+            <Video
+              source={{ uri: videoUri }}
+              style={styles.previewVideo}
+              shouldPlay={false}
+              resizeMode={ResizeMode.CONTAIN}
             />
-            <Text style={styles.charCount}>
-              {title.length}/{MAX_TITLE_LENGTH}
-            </Text>
-            <View style={styles.underline} />
+            <Text style={styles.uploadTitle}>Video recorded successfully!</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.commonInput}
+                placeholder="Enter video title"
+                placeholderTextColor="#bbb"
+                numberOfLines={1}
+                value={title}
+                onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
+              />
+              <Text style={styles.charCount}>
+                {title.length}/{MAX_TITLE_LENGTH}
+              </Text>
+              <View style={styles.underline} />
+            </View>
+            <View style={[styles.inputContainer, styles.lastInputContainer]}>
+              <TextInput
+                style={[styles.commonInput, styles.descriptionInput]}
+                placeholder="Enter video description"
+                placeholderTextColor="#bbb"
+                multiline
+                numberOfLines={3}
+                value={description}
+                onChangeText={(text) => setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH))}
+              />
+              <Text style={styles.charCount}>
+                {description.length}/{MAX_DESCRIPTION_LENGTH}
+              </Text>
+              <View style={styles.underline} />
+            </View>
+            <View style={styles.bottomButtonContainer}>
+              <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.retakeButton}>
+                <Text style={styles.buttonText}>Retake</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleUpload} style={styles.uploadButton}>
+                <Text style={styles.buttonText}>Upload Video</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.commonInput, styles.descriptionInput]}
-              placeholder="Enter video description"
-              placeholderTextColor="#bbb"
-              multiline
-              numberOfLines={3}
-              value={description}
-              onChangeText={(text) => setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH))}
-            />
-            <Text style={styles.charCount}>
-              {description.length}/{MAX_DESCRIPTION_LENGTH}
-            </Text>
-            <View style={styles.underline} />
-          </View>
-          <View style={styles.bottomButtonContainer}>
-            <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.retakeButton}>
-              <Text style={styles.buttonText}>Retake</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleUpload} style={styles.uploadButton}>
-              <Text style={styles.buttonText}>Upload Video</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        </ScrollView>
       ) : (
         <CameraView mode="video" ref={cameraRef} style={styles.camera} facing={facing}>
           <View style={styles.buttonContainer}>
@@ -315,14 +323,26 @@ const styles = StyleSheet.create({
     width: 75,
     height: 75,
   },
+  scrollViewContent: {
+    flexGrow: 1,
+  },
   videoPreview: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start",
     alignItems: "center",
+  },
+  previewVideo: {
+    width: 300,
+    height: 200,
+    marginVertical: 20,
   },
   inputContainer: {
     width: "80%",
     marginVertical: 10,
+  },
+  // give space to bottomButton
+  lastInputContainer: {
+    paddingBottom: 70,
   },
   commonInput: {
     padding: 10,
