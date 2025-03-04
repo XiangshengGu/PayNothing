@@ -2,12 +2,11 @@
 // Expo Camera Documentation: https://docs.expo.dev/versions/latest/sdk/camera/
 
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
-import { useState, useRef } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Alert, Image } from "react-native";
+import { useState, useRef, useEffect } from "react";
+import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../FirebaseConfig";
-
 
 export default function Post() {
   const [facing] = useState<CameraType>("back");
@@ -16,6 +15,28 @@ export default function Post() {
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [recordingTime, setRecordingTime] = useState(0); // recording time
+
+  // listen to isRecording to set timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (isRecording) {
+      // add 1 for each second
+      interval = setInterval(() => {
+        setRecordingTime((prevTime) => prevTime + 1);
+      }, 1000);
+    } else {
+      if (interval) clearInterval(interval);
+      setRecordingTime(0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRecording]);
 
   // Request Camera/Microphone permissions if not already granted
   if (!permission || !microphonePermission) {
@@ -74,7 +95,7 @@ export default function Post() {
     try {
       const response = await fetch(uri);
       // convert to binary data
-      const blob = await response.blob(); 
+      const blob = await response.blob();
 
       const filename = `videos/${Date.now()}.mp4`;
       const storageRef = ref(FIREBASE_ST, filename);
@@ -100,13 +121,20 @@ export default function Post() {
     try {
       const docRef = await addDoc(collection(FIRESTORE_DB, "videos"), {
         video_url: downloadURL,
-        title: "New Video",
-        description: "Please message me for more information",
+        title: title || "Untitled Video",
+        description: description || "No description",
         upload_time: Date.now(),
+        username: "Unknown User",
         likes: 0,
       });
       console.log("Record created:", docRef.id);
-      Alert.alert("Upload successfully", "The video has been saved to the database");
+
+      Alert.alert("Upload successfully", "The video has been saved to the database", [
+        {
+          text: "OK",
+          onPress: () => setVideoUri(null), // restet videoUri (return to camera page) if click "OK"
+        },
+      ]);
     } catch (error) {
       console.error("Failed to save record:", error);
       Alert.alert("Error", "Unable to save video recording");
@@ -119,9 +147,9 @@ export default function Post() {
       Alert.alert("Error", "Please record a video!");
       return;
     }
-  
+
     Alert.alert("Uploading", "Please wait ...");
-  
+
     const downloadURL = await uploadVideo(videoUri);
     if (downloadURL) {
       await saveVideoRecord(downloadURL);
@@ -133,6 +161,22 @@ export default function Post() {
       {videoUri ? (
         <View style={styles.videoPreview}>
           <Text style={styles.text}>Video recorded successfully!</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter video title"
+            placeholderTextColor="#bbb"
+            value={title}
+            onChangeText={setTitle}
+          />
+          <TextInput
+            style={[styles.input, styles.descriptionInput]}
+            placeholder="Enter video description"
+            placeholderTextColor="#bbb"
+            multiline
+            numberOfLines={3}
+            value={description}
+            onChangeText={setDescription}
+          />
           <TouchableOpacity onPress={handleUpload} style={styles.button}>
             <Text style={styles.buttonText}>Upload Video</Text>
           </TouchableOpacity>
@@ -143,6 +187,9 @@ export default function Post() {
       ) : (
         <CameraView mode="video" ref={cameraRef} style={styles.camera} facing={facing}>
           <View style={styles.buttonContainer}>
+            {isRecording && (
+              <Text style={styles.timerText}>{recordingTime}s</Text>
+            )}
             <TouchableOpacity
               onPress={isRecording ? stopRecording : startRecording}
               style={styles.iconButton}
@@ -162,7 +209,6 @@ export default function Post() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -202,6 +248,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  input: {
+    width: "80%",
+    padding: 10,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 5,
+    backgroundColor: "#222",
+    color: "white",
+    fontSize: 16,
+  },
+  descriptionInput: {
+    height: 60,
+    textAlignVertical: "top",
+  },
   text: {
     color: "rgb(255, 255, 255)",
     fontSize: 18,
@@ -229,5 +290,11 @@ const styles = StyleSheet.create({
   permissionButtonText: {
     color: "rgb(255, 255, 255)",
     fontSize: 16,
+  },
+  timerText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10, // on the recording button
   },
 });
