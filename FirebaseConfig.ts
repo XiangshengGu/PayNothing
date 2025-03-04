@@ -11,13 +11,13 @@ import { getStorage } from "firebase/storage";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "Hidden",
-  authDomain: "Hidden",
-  projectId: "Hidden",
-  storageBucket: "Hidden",
-  messagingSenderId: "Hidden",
-  appId: "Hidden",
-  measurementId: "Hidden"
+  apiKey: "AIzaSyA4o2bhIDA5W4xiy_e8vIQ1bJY-Ed6r9GI",
+  authDomain: "paynothingapp.firebaseapp.com",
+  projectId: "paynothingapp",
+  storageBucket: "paynothingapp.firebasestorage.app",
+  messagingSenderId: "115198796724",
+  appId: "1:115198796724:web:6959329825d78b13f788e1",
+  measurementId: "G-GX0CM29V3M"
 };
 
 export const FIREBASE_APP = initializeApp(firebaseConfig);

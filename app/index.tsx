@@ -31,6 +31,10 @@ export default function Home() {
   // Fetch video posts from Firestore with real-time updates
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(FIRESTORE_DB, "videos"), (snapshot) => {
+      if (snapshot.empty) {
+        console.log("No videos found in Firestore");
+      }
+
       const videoData: VideoItem[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         title: doc.data().title,
@@ -70,7 +74,7 @@ export default function Home() {
   };
 
   // Sort videos based on active tab
-  useEffect(() => {
+  const sortVideos = () => {
     let sortedVideos = [...videos];
     if (activeTab === "latest") {
       sortedVideos.sort((a, b) => b.uploadTime - a.uploadTime);
@@ -78,7 +82,7 @@ export default function Home() {
       sortedVideos.sort((a, b) => (b.likes || 0) - (a.likes || 0));
     }
     setFilteredVideos(sortedVideos);
-  }, [activeTab, videos]);
+  };
 
   // Filter videos by search query
   const handleSearch = (query: string) => {

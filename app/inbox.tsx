@@ -15,7 +15,6 @@ export default function Inbox() {
   const [newMessage, setNewMessage] = useState("");
   const [conversations, setConversations] = useState([]);
 
-  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
       setUser(currentUser);
@@ -23,10 +22,9 @@ export default function Inbox() {
     return unsubscribe;
   }, []);
 
-  // Load user's conversations
   useEffect(() => {
     if (user) {
-      const conversationsQuery = query(collection(FIRESTORE_DB, "messages", user.uid, "conversations"));
+      const conversationsQuery = query(collection(FIRESTORE_DB, "conversations", user.uid, "chats"));
       const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
         setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
@@ -34,7 +32,6 @@ export default function Inbox() {
     }
   }, [user]);
 
-  // Load messages if senderId exists
   useEffect(() => {
     if (user && senderId) {
       const conversationId = [user.uid, senderId].sort().join("_");
@@ -42,7 +39,6 @@ export default function Inbox() {
         collection(FIRESTORE_DB, "messages", conversationId, "chats"),
         orderBy("timestamp", "asc")
       );
-
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
         setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
@@ -55,11 +51,8 @@ export default function Inbox() {
       Alert.alert("Login Required", "Please log in to send messages.");
       return;
     }
-
     if (newMessage.trim() && senderId) {
       const conversationId = [user.uid, senderId].sort().join("_");
-
-      // Save message
       await addDoc(collection(FIRESTORE_DB, "messages", conversationId, "chats"), {
         senderId: user.uid,
         senderUsername: user.displayName || "Unknown User",
@@ -68,45 +61,26 @@ export default function Inbox() {
         timestamp: Date.now(),
       });
 
-      // Ensure conversation metadata is stored
-      const userConversationRef = doc(FIRESTORE_DB, "messages", user.uid, "conversations", senderId);
-      const senderConversationRef = doc(FIRESTORE_DB, "messages", senderId, "conversations", user.uid);
+      const userConversationRef = doc(FIRESTORE_DB, "conversations", user.uid, "chats", senderId);
+      const senderConversationRef = doc(FIRESTORE_DB, "conversations", senderId, "chats", user.uid);
 
-      const userConversationSnap = await getDoc(userConversationRef);
-      if (!userConversationSnap.exists()) {
-        await setDoc(userConversationRef, {
-          userId: senderId,
-          username: senderUsername,
-          lastMessage: newMessage,
-          timestamp: Date.now(),
-        });
-      } else {
-        await setDoc(userConversationRef, { lastMessage: newMessage, timestamp: Date.now() }, { merge: true });
-      }
+      await setDoc(userConversationRef, {
+        userId: senderId,
+        username: senderUsername,
+        lastMessage: newMessage,
+        timestamp: Date.now(),
+      }, { merge: true });
 
-      const senderConversationSnap = await getDoc(senderConversationRef);
-      if (!senderConversationSnap.exists()) {
-        await setDoc(senderConversationRef, {
-          userId: user.uid,
-          username: user.displayName || "Unknown User",
-          lastMessage: newMessage,
-          timestamp: Date.now(),
-        });
-      } else {
-        await setDoc(senderConversationRef, { lastMessage: newMessage, timestamp: Date.now() }, { merge: true });
-      }
+      await setDoc(senderConversationRef, {
+        userId: user.uid,
+        username: user.displayName || "Unknown User",
+        lastMessage: newMessage,
+        timestamp: Date.now(),
+      }, { merge: true });
 
       setNewMessage("");
     }
   };
-
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.loginMessage}>Please log in to view your inbox.</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -143,7 +117,7 @@ export default function Inbox() {
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.conversationItem}
-                onPress={() => navigation.navigate("inbox", { senderId: item.userId, senderUsername: item.username })}
+                onPress={() => navigation.navigate("Inbox", { senderId: item.userId, senderUsername: item.username })}
               >
                 <Text style={styles.conversationText}>{item.username}</Text>
                 <Text style={styles.lastMessage}>{item.lastMessage}</Text>
@@ -161,11 +135,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#fff",
-  },
-  loginMessage: {
-    fontSize: 18,
-    textAlign: "center",
-    marginTop: 50,
   },
   conversationHeader: {
     fontSize: 20,
