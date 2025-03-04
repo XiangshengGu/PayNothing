@@ -2,11 +2,15 @@
 // Expo Camera Documentation: https://docs.expo.dev/versions/latest/sdk/camera/
 
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import { Video } from "expo-av";
 import { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../FirebaseConfig";
+
+const MAX_TITLE_LENGTH = 40;
+const MAX_DESCRIPTION_LENGTH = 150;
 
 export default function Post() {
   const [facing] = useState<CameraType>("back");
@@ -17,6 +21,8 @@ export default function Post() {
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
+   // 1st frame URI of video
+  const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [recordingTime, setRecordingTime] = useState(0); // recording time
@@ -34,7 +40,7 @@ export default function Post() {
       if (!microphonePermission.granted) {
         await requestMicrophonePermission();
       }
-      
+
       // has applied one time
       setHasAutoRequestPermission(true);
     };
@@ -204,29 +210,44 @@ export default function Post() {
     <View style={styles.container}>
       {videoUri ? (
         <View style={styles.videoPreview}>
-          <Text style={styles.text}>Video recorded successfully!</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter video title"
-            placeholderTextColor="#bbb"
-            value={title}
-            onChangeText={setTitle}
-          />
-          <TextInput
-            style={[styles.input, styles.descriptionInput]}
-            placeholder="Enter video description"
-            placeholderTextColor="#bbb"
-            multiline
-            numberOfLines={3}
-            value={description}
-            onChangeText={setDescription}
-          />
-          <TouchableOpacity onPress={handleUpload} style={styles.button}>
-            <Text style={styles.buttonText}>Upload Video</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.button}>
-            <Text style={styles.buttonText}>Retake</Text>
-          </TouchableOpacity>
+          <Text style={styles.uploadTitle}>Video recorded successfully!</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.commonInput}
+              placeholder="Enter video title"
+              placeholderTextColor="#bbb"
+              numberOfLines={1}
+              value={title}
+              onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
+            />
+            <Text style={styles.charCount}>
+              {title.length}/{MAX_TITLE_LENGTH}
+            </Text>
+            <View style={styles.underline} />
+          </View>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.commonInput, styles.descriptionInput]}
+              placeholder="Enter video description"
+              placeholderTextColor="#bbb"
+              multiline
+              numberOfLines={3}
+              value={description}
+              onChangeText={(text) => setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH))}
+            />
+            <Text style={styles.charCount}>
+              {description.length}/{MAX_DESCRIPTION_LENGTH}
+            </Text>
+            <View style={styles.underline} />
+          </View>
+          <View style={styles.bottomButtonContainer}>
+            <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.retakeButton}>
+              <Text style={styles.buttonText}>Retake</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleUpload} style={styles.uploadButton}>
+              <Text style={styles.buttonText}>Upload Video</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <CameraView mode="video" ref={cameraRef} style={styles.camera} facing={facing}>
@@ -299,37 +320,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  input: {
+  inputContainer: {
     width: "80%",
-    padding: 10,
     marginVertical: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 5,
-    backgroundColor: "#222",
+  },
+  commonInput: {
+    padding: 10,
     color: "white",
     fontSize: 16,
   },
   descriptionInput: {
-    height: 60,
     textAlignVertical: "top",
   },
-  text: {
+  charCount: {
+    color: "#bbb",
+    fontSize: 12,
+    textAlign: "right",
+  },
+  underline: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
+  uploadTitle: {
     color: "rgb(255, 255, 255)",
     fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: "rgb(0, 60, 255)",
-    padding: 10,
-    borderRadius: 5,
-    marginHorizontal: 10,
-    marginVertical: 5,
-  },
-  buttonText: {
-    color: "rgb(255, 255, 255)",
-    fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
   },
@@ -355,5 +369,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 10, // on the recording button
+  },
+  bottomButtonContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: 20,
+    width: "100%",
+  },
+  retakeButton: {
+    backgroundColor: "rgb(41, 41, 41)",
+    padding: 10,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    width: "40%",
+    height: 40,
+  },
+  uploadButton: {
+    backgroundColor: "rgb(255, 224, 60)",
+    padding: 10,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginVertical: 5,
+    width: "40%",
+    height: 40,
+  },
+  buttonText: {
+    color: "rgb(255, 255, 255)",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
   },
 });
