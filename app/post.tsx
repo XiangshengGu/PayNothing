@@ -12,12 +12,35 @@ export default function Post() {
   const [facing] = useState<CameraType>("back");
   const [permission, requestCameraPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
+  // just auto apply permission for 1 time
+  const [hasAutoRequestPermission, setHasAutoRequestPermission] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [recordingTime, setRecordingTime] = useState(0); // recording time
+
+  // apply for permissions directly
+  useEffect(() => {
+    const requestPermissions = async () => {
+      if (hasAutoRequestPermission || !permission || !microphonePermission) return;
+
+      // For camera
+      if (!permission.granted) {
+        await requestCameraPermission();
+      }
+      // For microphone
+      if (!microphonePermission.granted) {
+        await requestMicrophonePermission();
+      }
+      
+      // has applied one time
+      setHasAutoRequestPermission(true);
+    };
+
+    requestPermissions();
+  }, [permission, microphonePermission]);
 
   // listen to isRecording to set timer
   useEffect(() => {
@@ -46,14 +69,35 @@ export default function Post() {
   if (!permission.granted || !microphonePermission.granted) {
     return (
       <View style={styles.container}>
+        <Text style={styles.messageTitle}>
+          To record in PayNothing
+        </Text>
         <Text style={styles.message}>
           We need your permission to use the camera and microphone.
         </Text>
-        <TouchableOpacity onPress={requestCameraPermission} style={styles.permissionButton}>
-          <Text style={styles.buttonText}>Grant Camera Permission</Text>
+        <TouchableOpacity
+          onPress={requestCameraPermission}
+          style={[
+            styles.permissionButton,
+            permission.granted && styles.permissionButtonGranted,
+          ]}
+          disabled={permission.granted} // if granted,disabled
+        >
+          <Text style={styles.buttonText}>
+            Grant Camera Permission{permission.granted && " √"}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={requestMicrophonePermission} style={styles.permissionButton}>
-          <Text style={styles.buttonText}>Grant Microphone Permission</Text>
+        <TouchableOpacity
+          onPress={requestMicrophonePermission}
+          style={[
+            styles.permissionButton,
+            microphonePermission.granted && styles.permissionButtonGranted,
+          ]}
+          disabled={microphonePermission.granted} // if granted,disabled
+        >
+          <Text style={styles.buttonText}>
+            Grant Microphone Permission{microphonePermission.granted && " √"}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -216,9 +260,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgb(0, 0, 0)",
   },
-  message: {
+  messageTitle: {
     textAlign: "center",
     paddingBottom: 10,
+    color: "rgb(255, 255, 255)",
+    fontSize: 20,
+  },
+  message: {
+    textAlign: "center",
+    paddingHorizontal: 10,
+    paddingBottom: 30,
     color: "rgb(255, 255, 255)",
     fontSize: 16,
   },
@@ -280,12 +331,20 @@ const styles = StyleSheet.create({
     color: "rgb(255, 255, 255)",
     fontSize: 16,
     fontWeight: "bold",
+    textAlign: "center",
   },
   permissionButton: {
     marginVertical: 10,
     padding: 10,
-    backgroundColor: "rgb(0, 60, 255)",
+    backgroundColor: "rgb(41, 41, 41)",
     borderRadius: 5,
+    width: "70%",
+    alignSelf: "center",
+    borderWidth: 1,
+    borderColor: "rgb(41, 41, 41)",
+  },
+  permissionButtonGranted: {
+    backgroundColor: "transparent",
   },
   permissionButtonText: {
     color: "rgb(255, 255, 255)",
