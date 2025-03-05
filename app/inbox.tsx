@@ -1,130 +1,79 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
-import { collection, addDoc, query, onSnapshot, orderBy, doc, getDoc, setDoc } from "firebase/firestore";
+import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
+import { useRouter } from "expo-router";
+import { collection, query, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
 export default function Inbox() {
-  const route = useRoute();
-  const navigation = useNavigation();
-  const { senderId, senderUsername } = route.params || {};
-
+  const router = useRouter();
   const [user, setUser] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
   const [conversations, setConversations] = useState([]);
 
+  // 1️⃣ Track user authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-      setUser(currentUser);
+      if (currentUser) {
+        setUser(currentUser);
+      }
     });
     return unsubscribe;
   }, []);
 
+  // 2️⃣ Fetch past conversations
   useEffect(() => {
     if (user) {
-      const conversationsQuery = query(collection(FIRESTORE_DB, "conversations", user.uid, "chats"));
+      const userConversationsRef = collection(FIRESTORE_DB, "conversations", user.uid, "chats");
+      const conversationsQuery = query(userConversationsRef);
+
       const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
-        setConversations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        if (!snapshot.empty) {
+          setConversations(
+            snapshot.docs.map((doc) => ({
+              id: doc.id, // The unique conversation ID
+              ...doc.data(),
+            }))
+          );
+        } else {
+          console.log("No past conversations found.");
+        }
       });
+
       return unsubscribe;
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user && senderId) {
-      const conversationId = [user.uid, senderId].sort().join("_");
-      const messagesQuery = query(
-        collection(FIRESTORE_DB, "messages", conversationId, "chats"),
-        orderBy("timestamp", "asc")
-      );
-      const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
-      return unsubscribe;
-    }
-  }, [user, senderId]);
-
-  const sendMessage = async () => {
-    if (!user) {
-      Alert.alert("Login Required", "Please log in to send messages.");
-      return;
-    }
-    if (newMessage.trim() && senderId) {
-      const conversationId = [user.uid, senderId].sort().join("_");
-      await addDoc(collection(FIRESTORE_DB, "messages", conversationId, "chats"), {
-        senderId: user.uid,
-        senderUsername: user.displayName || "Unknown User",
-        receiverId: senderId,
-        text: newMessage,
-        timestamp: Date.now(),
-      });
-
-      const userConversationRef = doc(FIRESTORE_DB, "conversations", user.uid, "chats", senderId);
-      const senderConversationRef = doc(FIRESTORE_DB, "conversations", senderId, "chats", user.uid);
-
-      await setDoc(userConversationRef, {
-        userId: senderId,
-        username: senderUsername,
-        lastMessage: newMessage,
-        timestamp: Date.now(),
-      }, { merge: true });
-
-      await setDoc(senderConversationRef, {
-        userId: user.uid,
-        username: user.displayName || "Unknown User",
-        lastMessage: newMessage,
-        timestamp: Date.now(),
-      }, { merge: true });
-
-      setNewMessage("");
-    }
+  // 3️⃣ Open chat when a conversation is clicked
+  const openChat = (selectedUserId, selectedUsername) => {
+    if (!user) return;
+    router.push({
+      pathname: "/chatScreen",
+      params: {
+        senderId: selectedUserId,
+        senderUsername: selectedUsername,
+      },
+    });
   };
 
   return (
     <View style={styles.container}>
-      {senderId ? (
-        <>
-          <Text style={styles.conversationHeader}>Chat with {senderUsername}</Text>
-          <FlatList
-            data={messages}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={[styles.messageContainer, item.senderId === user.uid ? styles.myMessage : styles.theirMessage]}>
-                <Text style={styles.messageText}>{item.text}</Text>
-              </View>
-            )}
-          />
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholder="Type a message..."
-            />
-            <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
-              <Text style={styles.sendButtonText}>Send</Text>
-            </TouchableOpacity>
-          </View>
-        </>
+      <Text style={styles.conversationHeader}>Your Conversations</Text>
+
+      {conversations.length === 0 ? (
+        <Text style={styles.noConversations}>No past conversations found.</Text>
       ) : (
-        <>
-          <Text style={styles.conversationHeader}>Your Conversations</Text>
-          <FlatList
-            data={conversations}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.conversationItem}
-                onPress={() => navigation.navigate("Inbox", { senderId: item.userId, senderUsername: item.username })}
-              >
-                <Text style={styles.conversationText}>{item.username}</Text>
-                <Text style={styles.lastMessage}>{item.lastMessage}</Text>
-              </TouchableOpacity>
-            )}
-          />
-        </>
+        <FlatList
+          data={conversations}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.conversationItem}
+              onPress={() => openChat(item.userId, item.username)}
+            >
+              <Text style={styles.conversationText}>{item.username}</Text>
+            </TouchableOpacity>
+          )}
+        />
       )}
     </View>
   );
@@ -141,6 +90,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 10,
   },
+  noConversations: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 20,
+  },
   conversationItem: {
     padding: 15,
     borderBottomWidth: 1,
@@ -149,49 +104,5 @@ const styles = StyleSheet.create({
   conversationText: {
     fontSize: 18,
     fontWeight: "bold",
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: "#666",
-  },
-  inputContainer: {
-    flexDirection: "row",
-    marginTop: 10,
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    borderRadius: 5,
-    marginRight: 10,
-  },
-  sendButton: {
-    backgroundColor: "blue",
-    padding: 10,
-    borderRadius: 5,
-  },
-  sendButtonText: {
-    color: "white",
-    fontSize: 16,
-  },
-  messageContainer: {
-    padding: 10,
-    borderRadius: 10,
-    marginVertical: 5,
-    maxWidth: "80%",
-  },
-  myMessage: {
-    alignSelf: "flex-end",
-    backgroundColor: "#007bff",
-  },
-  theirMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: "#ccc",
-  },
-  messageText: {
-    color: "white",
-    fontSize: 16,
   },
 });

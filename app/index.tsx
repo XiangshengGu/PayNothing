@@ -147,7 +147,7 @@ export default function Home() {
       {/* Title and Description */}
       <View style={styles.overlay}>
         <TouchableOpacity
-          onPress={() => router.push({ pathname: "/inbox", params: { senderId: item.id } })}
+          onPress={() => router.push({ pathname: "/chat", params: { senderId: item.id } })}
         >
           <Text style={styles.username}>{item.username}</Text>
         </TouchableOpacity>
