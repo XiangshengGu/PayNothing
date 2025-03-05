@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { collection, addDoc, query, onSnapshot, orderBy, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, query, onSnapshot, orderBy, doc, setDoc, where } from "firebase/firestore";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -22,13 +22,25 @@ export default function ChatScreen() {
   useEffect(() => {
     if (user && senderId) {
       const conversationId = [user.uid, senderId].sort().join("_");
+
+      console.log("Listening for messages in conversation:", conversationId);
+
       const messagesQuery = query(
-        collection(FIRESTORE_DB, "messages", conversationId, "chats"),
-        orderBy("timestamp", "asc")
+        collection(FIRESTORE_DB, "messages"),
+        where("conversationId", "==", conversationId), // Ensure correct filtering
+        orderBy("timestamp", "asc") // Order messages by time
       );
+
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        setMessages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const fetchedMessages = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        console.log("Fetched messages:", fetchedMessages);
+        setMessages(fetchedMessages);
       });
+
       return unsubscribe;
     }
   }, [user, senderId]);
@@ -42,8 +54,9 @@ export default function ChatScreen() {
     if (newMessage.trim()) {
       const conversationId = [user.uid, senderId].sort().join("_");
 
-      // Store the message in Firestore
-      await addDoc(collection(FIRESTORE_DB, "messages", conversationId, "chats"), {
+      await addDoc(collection(FIRESTORE_DB, "messages"), {
+        conversationId: conversationId,
+        participants: [user.uid, senderId],
         senderId: user.uid,
         senderUsername: user.displayName || "Unknown User",
         receiverId: senderId,
@@ -51,6 +64,7 @@ export default function ChatScreen() {
         timestamp: Date.now(),
       });
 
+      // Store conversation metadata for both users in "conversations"
       const userConversationRef = doc(FIRESTORE_DB, "conversations", user.uid, "chats", senderId);
       await setDoc(userConversationRef, {
         userId: senderId,

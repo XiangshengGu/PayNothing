@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { collection, query, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, getDoc, doc, where } from "firebase/firestore";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -10,7 +10,6 @@ export default function Inbox() {
   const [user, setUser] = useState(null);
   const [conversations, setConversations] = useState([]);
 
-  // 1️⃣ Track user authentication state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
       if (currentUser) {
@@ -20,34 +19,69 @@ export default function Inbox() {
     return unsubscribe;
   }, []);
 
-  // 2️⃣ Fetch past conversations
   useEffect(() => {
     if (user) {
-      const userConversationsRef = collection(FIRESTORE_DB, "conversations", user.uid, "chats");
-      const conversationsQuery = query(userConversationsRef);
+      console.log("Fetching inbox for user:", user.uid);
 
-      const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
+      // Firestore query: Get messages where the user is either the sender or the receiver
+      const messagesQuery = query(
+        collection(FIRESTORE_DB, "messages"),
+        where("participants", "array-contains", user.uid)  // Fetch only the messages related to current user
+      );
+
+      const unsubscribe = onSnapshot(messagesQuery, async (snapshot) => {
         if (!snapshot.empty) {
-          setConversations(
-            snapshot.docs.map((doc) => ({
-              id: doc.id, // The unique conversation ID
-              ...doc.data(),
-            }))
+          const fetchedConversations = new Map(); // Store only one entry per user
+
+          for (const docSnap of snapshot.docs) {
+            const data = docSnap.data();
+            const conversationId = data.conversationId;
+            const ids = conversationId.split("_");
+            const otherUserId = ids.find((id) => id !== user.uid);
+            if (!otherUserId) continue; // Skip if unable to find the other user
+
+            // Check if this user is already in the conversations map
+            if (!fetchedConversations.has(otherUserId)) {
+              fetchedConversations.set(otherUserId, {
+                id: conversationId,
+                userId: otherUserId,
+                username: "Unknown User", // To do: get the actual username here, currently it's just a placeholder
+                lastMessage: data.text,
+                timestamp: data.timestamp,
+              });
+            } else {
+              // Update only if this message is more recent
+              const existingData = fetchedConversations.get(otherUserId);
+              if (data.timestamp > existingData.timestamp) {
+                fetchedConversations.set(otherUserId, {
+                  ...existingData,
+                  lastMessage: data.text,
+                  timestamp: data.timestamp,
+                });
+              }
+            }
+          }
+
+          // Convert Map values to array and sort by most recent message
+          const sortedConversations = Array.from(fetchedConversations.values()).sort(
+            (a, b) => b.timestamp - a.timestamp
           );
+
+          console.log("Fetched conversations:", sortedConversations);
+          setConversations(sortedConversations);
         } else {
           console.log("No past conversations found.");
         }
       });
 
-      return unsubscribe;
+      return () => unsubscribe();
     }
   }, [user]);
 
-  // 3️⃣ Open chat when a conversation is clicked
   const openChat = (selectedUserId, selectedUsername) => {
     if (!user) return;
     router.push({
-      pathname: "/chatScreen",
+      pathname: "/chat",
       params: {
         senderId: selectedUserId,
         senderUsername: selectedUsername,
@@ -58,7 +92,6 @@ export default function Inbox() {
   return (
     <View style={styles.container}>
       <Text style={styles.conversationHeader}>Your Conversations</Text>
-
       {conversations.length === 0 ? (
         <Text style={styles.noConversations}>No past conversations found.</Text>
       ) : (
@@ -78,6 +111,7 @@ export default function Inbox() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
