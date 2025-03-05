@@ -9,15 +9,16 @@ import { getAuth, User, RecaptchaVerifier,
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional 
+// Please insert your Firebase API key, and other necessary fields
 const firebaseConfig = {
-  apiKey: "Hidden",
-  authDomain: "Hidden",
-  projectId: "Hidden",
-  storageBucket: "Hidden",
-  messagingSenderId: "Hidden",
-  appId: "Hidden",
-  measurementId: "Hidden"
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+  measurementId: ""
 };
 
 export const FIREBASE_APP = initializeApp(firebaseConfig);
