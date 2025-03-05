@@ -6,6 +6,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB } from "../FirebaseConfig";
 import { useRouter } from "expo-router";
+import { doc, updateDoc, increment } from "firebase/firestore";
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
 
@@ -49,21 +50,34 @@ export default function Home() {
 
   useEffect(() => {
     let sortedVideos = [...videos];
-
+  
     if (activeTab === "latest") {
       sortedVideos.sort((a, b) => b.uploadTime - a.uploadTime);
     } else if (activeTab === "trending") {
-      sortedVideos.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+      sortedVideos.sort((a, b) => {
+        const likesA = likes[a.id] ?? a.likes ?? 0;  // Ensure likes are correctly retrieved
+        const likesB = likes[b.id] ?? b.likes ?? 0;
+        return likesB - likesA;
+      });
     }
-
+  
     setFilteredVideos(sortedVideos);
-  }, [activeTab, videos]);
+  }, [activeTab, videos, likes]); // Add `likes` dependency
+  
 
-  const handleLike = (videoId: string) => {
-    setLikes((prevLikes) => ({
-      ...prevLikes,
-      [videoId]: (prevLikes[videoId] || 0) + 1,
-    }));
+  const handleLike = async (videoId: string) => {
+    try {
+      const videoRef = doc(FIRESTORE_DB, "videos", videoId);
+      await updateDoc(videoRef, { likes: increment(1) }); // Update Firestore likes
+  
+      // Optimistically update UI state
+      setLikes((prevLikes) => ({
+        ...prevLikes,
+        [videoId]: (prevLikes[videoId] || 0) + 1,
+      }));
+    } catch (error) {
+      console.error("Error updating like count:", error);
+    }
   };
 
   const handleMessagePress = (video: VideoPost) => {
