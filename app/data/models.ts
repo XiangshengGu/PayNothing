@@ -1,6 +1,7 @@
 export interface VideoItem {
     id: string;
     title: string;
+    username: string;
     description: string;
     uploadTime: number;
     likes: number;
