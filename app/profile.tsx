@@ -4,7 +4,6 @@
 // And from Sample Usage in Expo Location Documentation: 
 // https://docs.expo.dev/versions/latest/sdk/location/
 // Created with the assistance of DeepSeek AI (https://www.deepseek.com).
-
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
 import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../FirebaseConfig";
@@ -41,7 +40,8 @@ export default function Profile() {
   const [verificationId, setVerificationId] = useState<string | null>(null);
   const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com", // From Firebase
+    clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
+    redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
   });
   
   // Handle Google Sign-In response
@@ -287,11 +287,15 @@ export default function Profile() {
             </TouchableOpacity>
           </View>
         </View>
+
         {/* App icon at the bottom */}
         <Image 
           source={require("../assets/images/icon.png")} 
           style={styles.appIcon}
         />
+
+        {/* TODO: Add the banner ad */}
+
       </View>
     );
   }
@@ -432,12 +436,12 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
   appIcon: {
-    width: 300,
-    height: 300,
+    width: 200,
+    height: 200,
     alignSelf: 'center',
     borderRadius: 5,
-    marginTop: 50,
-    opacity: 0.8,
+    opacity: 0.7,
+    marginBottom: 10,
   },
 
   button: {
