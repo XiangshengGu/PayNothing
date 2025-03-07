@@ -17,7 +17,7 @@ import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useUserStore } from "../data/store";
-import { useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -48,10 +48,16 @@ export default function Profile() {
 
   const paramOfPage = useLocalSearchParams(); // get route parma
   const { setStoreUser, logout } = useUserStore(); // function of store
+  const router = useRouter();
 
   useEffect(() => {
     if (paramOfPage?.fromPost) {
       Alert.alert("Login Required", "You must log in before posting a video.");
+      const { fromPost, ...restParams } = paramOfPage;
+      router.replace({
+        pathname: "/profile",
+        params: restParams
+      });
     }
   }, [paramOfPage]);
   
@@ -76,6 +82,16 @@ export default function Profile() {
           setGender(userData.gender || "");
           setAge(userData.age ? userData.age.toString() : "");
           setLocation(userData.location || "Unknown");
+
+          // update store
+          const userDataFromDB = { 
+            username: userDoc.data()?.username || "Unknown User",
+            age: userDoc.data()?.age || 0,
+            gender: userDoc.data()?.gender || "Unknown",
+          };
+          // console.log('user-auth, user-data', currentUser, userDataFromDB);
+          // set global store of user
+          setStoreUser(currentUser, userDataFromDB);
         }
       }
     });
@@ -91,19 +107,6 @@ export default function Profile() {
         email,
         password
       );
-      const loggedInUser = userCredential.user;
-
-      // Get userInfo from Firestore
-      const userDoc = await getDoc(doc(FIRESTORE_DB, "users", loggedInUser.uid));
-      const userDataFromDB = userDoc.exists()
-        ? { 
-          username: userDoc.data()?.username || "Unknown User",
-          age: userDoc.data()?.age || 0,
-          gender: userDoc.data()?.gender || "Unknown",
-        }
-        : { username: "Unknown User", age: 0, gender: "Unknown" };
-      // set global store of user
-      setStoreUser(loggedInUser, userDataFromDB);
 
       Alert.alert("Login Successful", "Welcome back!");
     } catch (error: any) {

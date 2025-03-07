@@ -3,13 +3,13 @@
 
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { Video, ResizeMode } from "expo-av";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
 import { useUserStore } from "../data/store";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_DESCRIPTION_LENGTH = 150;
@@ -32,6 +32,27 @@ export default function Post() {
   const { userAuth: storeUserAuth, userData: storeUserData } = useUserStore();
   const router = useRouter();
 
+  // reset all state
+  const resetState = () => {
+    setHasAutoRequestPermission(false);
+    setIsRecording(false);
+    setVideoUri(null);
+    setThumbnailUri(null);
+    setTitle("");
+    setDescription("");
+    setRecordingTime(0);
+  };
+
+  // useFocusEffect to listen focusing
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+          // when lose focusing
+          resetState();
+      };
+    }, [])
+  );
+
   // check if login
   useEffect(() => {
     if (!storeUserAuth) {
@@ -40,6 +61,7 @@ export default function Post() {
         params: { fromPost: "true", timestamp: Date.now().toString() },
       }); // jump to profile page
     }
+    // console.log('post',storeUserAuth,storeUserData);
   }, [storeUserAuth]);
 
   // apply for permissions directly
