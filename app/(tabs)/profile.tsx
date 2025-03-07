@@ -16,6 +16,8 @@ import * as Location from "expo-location";
 import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { useUserStore } from "../data/store";
+import { useLocalSearchParams } from "expo-router";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -43,6 +45,15 @@ export default function Profile() {
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
   });
+
+  const paramOfPage = useLocalSearchParams(); // get route parma
+  const { setStoreUser, logout } = useUserStore(); // function of store
+
+  useEffect(() => {
+    if (paramOfPage?.fromPost) {
+      Alert.alert("Login Required", "You must log in before posting a video.");
+    }
+  }, [paramOfPage]);
   
   // Handle Google Sign-In response
   useEffect(() => {
@@ -80,6 +91,20 @@ export default function Profile() {
         email,
         password
       );
+      const loggedInUser = userCredential.user;
+
+      // Get userInfo from Firestore
+      const userDoc = await getDoc(doc(FIRESTORE_DB, "users", loggedInUser.uid));
+      const userDataFromDB = userDoc.exists()
+        ? { 
+          username: userDoc.data()?.username || "Unknown User",
+          age: userDoc.data()?.age || 0,
+          gender: userDoc.data()?.gender || "Unknown",
+        }
+        : { username: "Unknown User", age: 0, gender: "Unknown" };
+      // set global store of user
+      setStoreUser(loggedInUser, userDataFromDB);
+
       Alert.alert("Login Successful", "Welcome back!");
     } catch (error: any) {
       setErrorMessage("Invalid email or password. Please try again.");
@@ -100,6 +125,7 @@ export default function Profile() {
   const handleLogout = async () => {
     try {
       await signOut(FIREBASE_AUTH);
+      logout(); // clear global store
       Alert.alert("Logged Out", "You have been logged out successfully.");
     } catch (error: any) {
       Alert.alert("Error", error.message);

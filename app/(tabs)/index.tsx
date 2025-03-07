@@ -10,7 +10,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { collection, onSnapshot, doc, updateDoc, increment} from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
-import { VideoItem } from "./data/models";
+import { VideoItem } from "../data/models";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 

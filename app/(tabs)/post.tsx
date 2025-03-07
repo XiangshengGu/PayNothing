@@ -8,6 +8,8 @@ import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, Scro
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
+import { useUserStore } from "../data/store";
+import { useRouter } from "expo-router";
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_DESCRIPTION_LENGTH = 150;
@@ -26,6 +28,19 @@ export default function Post() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [recordingTime, setRecordingTime] = useState(0); // recording time
+
+  const { userAuth: storeUserAuth, userData: storeUserData } = useUserStore();
+  const router = useRouter();
+
+  // check if login
+  useEffect(() => {
+    if (!storeUserAuth) {
+      router.push({
+        pathname: "/profile",
+        params: { fromPost: "true", timestamp: Date.now().toString() },
+      }); // jump to profile page
+    }
+  }, [storeUserAuth]);
 
   // apply for permissions directly
   useEffect(() => {
@@ -168,13 +183,22 @@ export default function Post() {
 
   // create a record in Firestore database
   const saveVideoRecord = async (downloadURL: string) => {
+    if (!storeUserAuth) {
+      Alert.alert("Error", "You must be logged in to post!");
+      router.replace({
+        pathname: "/profile",
+        params: { fromPost: "true", timestamp: Date.now().toString() },
+      });
+      return;
+    }
+
     try {
       const docRef = await addDoc(collection(FIRESTORE_DB, "videos"), {
         video_url: downloadURL,
         title: title || "Untitled Video",
         description: description || "No description",
         upload_time: Date.now(),
-        username: "Unknown User",
+        username: storeUserData?.username || "Unknown User",
         likes: 0,
       });
       console.log("Record created:", docRef.id);

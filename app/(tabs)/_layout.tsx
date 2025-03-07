@@ -1,7 +1,11 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter  } from "expo-router";
 import { Image } from "react-native";
+import { useUserStore } from "../data/store";
 
 export default function TabLayout() {
+  const { userAuth } = useUserStore();
+  const router = useRouter();
+
   return (
     <Tabs
       screenOptions={{
@@ -20,6 +24,17 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="post"
+        listeners={{
+          tabPress: (e) => {
+            if (!userAuth) {
+              e.preventDefault();
+              router.replace({
+                pathname: "/profile",
+                params: { fromPost: "true", timestamp: Date.now().toString() },
+              });
+            }
+          },
+        }}
         options={{
           tabBarLabel: "Post",
           tabBarIcon: () => (
