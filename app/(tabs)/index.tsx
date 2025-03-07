@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { collection, onSnapshot, doc, updateDoc, increment} from "firebase/firestore";
 import React from "react";
-import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
+import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { VideoItem } from "./data/models";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
@@ -106,8 +106,8 @@ export default function Home()
       Alert.alert("Login Required", "Please log in to send messages");
       return;
     }
-    router.push({ 
-      pathname: "/inbox", 
+    router.push({
+      pathname: "../chat",
       params: { senderId: video.id, senderUsername: video.username } 
     });
   };
@@ -190,7 +190,7 @@ export default function Home()
       {!playStatus[index] && (
         <View style={styles.pauseOverlay}>
           <Image
-            source={require("../assets/images/play-icon.png")}
+            source={require("../../assets/images/play-icon.png")}
             style={styles.playIcon}
           />
         </View>
@@ -200,7 +200,11 @@ export default function Home()
         <View style={styles.textContainer}>
           <Text style={styles.videoTitle}>{item.title}</Text>
           <View style={styles.userInfo}>
-            <Text style={styles.username}>@{item.username}</Text>
+            <TouchableOpacity
+              onPress={() => handleMessagePress(item)}
+            >
+              <Text style={styles.username}>@{item.username}</Text>
+            </TouchableOpacity>
             <Text style={styles.uploadTime}>
               {new Date(item.uploadTime).toLocaleDateString()}
             </Text>
@@ -215,8 +219,8 @@ export default function Home()
           >
             <Image
               source={likedVideos.includes(item.id) 
-                ? require("../assets/images/filled-like.png") 
-                : require("../assets/images/empty-like.png")}
+                ? require("../../assets/images/filled-like.png")
+                : require("../../assets/images/empty-like.png")}
               style={styles.likeIcon}
             />
             <Text style={styles.likeCount}>
@@ -229,7 +233,7 @@ export default function Home()
             onPress={() => handleMessagePress(item)}
           >
             <Image
-              source={require("../assets/images/DM-icon.png")}
+              source={require("../../assets/images/DM-icon.png")}
               style={styles.dmIcon}
             />
           </TouchableOpacity>

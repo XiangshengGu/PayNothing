@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, FlatList, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { collection, query, onSnapshot, getDoc, doc, where } from "firebase/firestore";
-import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
+import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
 export default function Inbox() {
@@ -81,7 +81,7 @@ export default function Inbox() {
   const openChat = (selectedUserId, selectedUsername) => {
     if (!user) return;
     router.push({
-      pathname: "/chat",
+      pathname: "../chat",
       params: {
         senderId: selectedUserId,
         senderUsername: selectedUsername,

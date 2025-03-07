@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
-import { FIREBASE_ST, FIRESTORE_DB } from "../FirebaseConfig";
+import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_DESCRIPTION_LENGTH = 150;
@@ -270,8 +270,8 @@ export default function Post() {
               <Image
                 source={
                   isRecording
-                    ? require("../assets/images/stop-recording.png")
-                    : require("../assets/images/recording.png")
+                    ? require("../../assets/images/stop-recording.png")
+                    : require("../../assets/images/recording.png")
                 }
                 style={styles.icon}
               />

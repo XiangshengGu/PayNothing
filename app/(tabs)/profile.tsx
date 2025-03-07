@@ -6,7 +6,7 @@
 // Created with the assistance of DeepSeek AI (https://www.deepseek.com).
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
-import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../FirebaseConfig";
+import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../../FirebaseConfig";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, 
          signOut, User, updateProfile, 
          PhoneAuthProvider, signInWithCredential, 
@@ -239,7 +239,7 @@ export default function Profile() {
             disabled={!request}
           >
             <Image 
-              source={require("../assets/images/google.png")} 
+              source={require("../../assets/images/google.png")}
               style={styles.googleIcon}
             />
             <Text style={styles.googleButtonText}>Sign in with Google</Text>
@@ -290,7 +290,7 @@ export default function Profile() {
 
         {/* App icon at the bottom */}
         <Image 
-          source={require("../assets/images/icon.png")} 
+          source={require("../../assets/images/icon.png")}
           style={styles.appIcon}
         />
 
@@ -310,7 +310,7 @@ export default function Profile() {
           onPress={handleUsernameClick}
         >
           <Image
-            source={require("../assets/images/default-profile.png")}
+            source={require("../../assets/images/default-profile.png")}
             style={styles.profileImage}
           />
         </TouchableOpacity>
