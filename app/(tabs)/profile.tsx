@@ -18,6 +18,9 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useUserStore } from "../data/store";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import * as ImagePicker from 'expo-image-picker';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Ionicons } from "@expo/vector-icons";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,6 +30,7 @@ export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [username, setUsername] = useState("newbie");
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [gender, setGender] = useState("");
@@ -135,6 +139,52 @@ export default function Profile() {
     }
   };
 
+  const handleProfilePicturePress = async () => {
+    if (!user) {
+      Alert.alert("Error", "User not authenticated");
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert("Permission required", "We need access to your photos to update your profile picture.");
+      return;
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!pickerResult.canceled) {
+      const uri = pickerResult.assets[0].uri;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const storage = getStorage();
+      const storageRef = ref(storage, `profile-pictures/${user.uid}`);
+      
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      await updateProfile(user as User, { photoURL: downloadURL });
+      setProfileImage(downloadURL);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.photoURL) {
+      setProfileImage(user.photoURL);
+    }
+  }, [user]);
+  
+  <Image
+    source={profileImage ? { uri: profileImage } : require("../../assets/images/profile.png")}
+    style={styles.profileImage}
+  />
+
   const handleEditLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") {
@@ -177,16 +227,29 @@ export default function Profile() {
     }
   };
 
-  const handleUsernameClick = () => {
-    setIsEditingUsername(true);
-  }
-
   const handleGenderClick = () => {
     setIsEditingGender(true);
   };
 
   const handleAgeClick = () => {
     setIsEditingAge(true);
+  };
+
+  const handleEditUsername = async () => {
+    if (!isEditingUsername) {
+      setIsEditingUsername(true);
+      return;
+    }
+
+    if (user) {
+      try {
+        await updateProfile(user, { displayName: username });
+        setIsEditingUsername(false);
+        Alert.alert("Username Updated", "Your username has been updated.");
+      } catch (error: any) {
+        Alert.alert("Error", error.message);
+      }
+    }
   };
 
   if (!user) {
@@ -277,7 +340,7 @@ export default function Profile() {
 
         {/* Email Auth Section */}
         <View style={styles.emailAuthContainer}>
-          <Text style={styles.separator}>Or use email address to sign up/sign in</Text>
+          <Text style={styles.separator}>Or use your email address to sign up/sign in</Text>
           
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
@@ -332,117 +395,131 @@ export default function Profile() {
   // User Profile
   return (
     <View style={styles.container}>
-      {/* Username Edit Section */}
+      {/* Profile Header with Side-by-Side Layout */}
       <View style={styles.profileHeader}>
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.profileImageContainer}
-          onPress={handleUsernameClick}
+          onPress={handleProfilePicturePress}
         >
           <Image
-            source={require("../../assets/images/default-profile.png")}
+            source={profileImage ? { uri: profileImage } : require("../../assets/images/default-profile.png")}
             style={styles.profileImage}
           />
+          <View style={styles.editPhotoBadge}>
+            <Ionicons name="camera" size={18} color="white" />
+          </View>
         </TouchableOpacity>
 
-        <View style={styles.profileTextContainer}>
+      {/* Personal Information moved here */}
+      <View style={styles.personalInfoContainer}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Username:</Text>
           {isEditingUsername ? (
             <TextInput
-              style={styles.usernameInput}
+              style={styles.editableInput}
               value={username}
-              onChangeText={(text) => setUsername(text)}
-              onBlur={() => {
-                handleUpdateUserData("username", username);
-                setIsEditingUsername(false);
-              }}
+              onChangeText={setUsername}
+              autoFocus
+              onSubmitEditing={handleEditUsername}
             />
           ) : (
-            <Text style={styles.username} onPress={handleUsernameClick}>
-              {username}
-            </Text>
+            <TouchableOpacity 
+              style={styles.infoValueContainer}
+              onPress={() => setIsEditingUsername(true)}
+            >
+              <Text style={styles.infoValue}>{username}</Text>
+              <Ionicons name="pencil" size={16} color="#666" />
+            </TouchableOpacity>
           )}
         </View>
+
+          {/* Gender Input */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Gender:</Text>
+            {isEditingGender ? (
+              <TextInput
+                style={styles.editableInput}
+                value={gender}
+                onChangeText={setGender}
+                onBlur={() => {
+                  handleUpdateUserData("gender", gender);
+                  setIsEditingGender(false);
+                }}
+              />
+            ) : (
+              <TouchableOpacity 
+                style={styles.infoValueContainer}
+                onPress={handleGenderClick}
+              >
+                <Text style={styles.infoValue}>{gender || "Add gender"}</Text>
+                <Ionicons name="pencil" size={16} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Age Input */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Age:</Text>
+            {isEditingAge ? (
+              <TextInput
+                style={styles.editableInput}
+                value={age}
+                keyboardType="numeric"
+                onChangeText={setAge}
+                onBlur={() => {
+                  handleUpdateUserData("age", parseInt(age));
+                  setIsEditingAge(false);
+                }}
+              />
+            ) : (
+              <TouchableOpacity 
+                style={styles.infoValueContainer}
+                onPress={handleAgeClick}
+              >
+                <Text style={styles.infoValue}>{age || "Add age"}</Text>
+                <Ionicons name="pencil" size={16} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Location */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Location:</Text>
+            <TouchableOpacity 
+              style={styles.infoValueContainer}
+              onPress={handleEditLocation}
+            >
+              <Text style={styles.infoValue}>{location}</Text>
+              <Ionicons name="location" size={16} color="#666" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-
-      {/* Gender Edit Section */}
-      <View style={styles.inputSection}>
-        <Text style={styles.inputSectionTitle}>Personal Information</Text>
-
-        {isEditingGender ? (
-          <TextInput
-            style={styles.input}
-            value={gender}
-            onChangeText={(text) => setGender(text)}
-            onBlur={() => {
-              handleUpdateUserData("gender", gender);
-              setIsEditingGender(false);
-            }}
-          />
-        ) : (
-          <Text style={styles.editableField} onPress={handleGenderClick}>
-            Gender: {gender || "Add your gender"}
-          </Text>
-        )}
-
-        {isEditingAge ? (
-          <TextInput
-            style={styles.input}
-            value={age}
-            keyboardType="numeric"
-            onChangeText={(text) => setAge(text)}
-            onBlur={() => {
-              handleUpdateUserData("age", parseInt(age));
-              setIsEditingAge(false);
-            }}
-          />
-        ) : (
-          <Text style={styles.editableField} onPress={handleAgeClick}>
-            Age: {age || "Add your age"}
-          </Text>
-        )}
-
-        <TouchableOpacity onPress={handleUsernameClick}>
-          <Text style={styles.editInfoHint}>(You can click on the information above to change it)</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Location Section */}
-      <TouchableOpacity onPress={handleEditLocation}>
-        <Text style={styles.location}>Location: {location}</Text>
-      </TouchableOpacity>
-
-      {/* Saved Posts */}
-      <View style={styles.savedPostsContainer}>
-        <Text style={styles.savedPostsTitle}>Saved Posts</Text>
-        <FlatList
-          data={savedPosts}
-          keyExtractor={(item, index) => index.toString()}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
-          renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <Text style={styles.savedPostItem}>{item}</Text>
-            </View>
-          )}
-        />
-      </View>
-
-      {/* Your Posts */}
-      <View style={styles.savedPostsContainer}>
-        <Text style={styles.savedPostsTitle}>Your Posts</Text>
+      {/* Posts Sections */}
+      <View style={styles.postsContainer}>
+        <Text style={styles.sectionTitle}>Your Posts</Text>
         <FlatList
           data={yourPosts}
-          keyExtractor={(item, index) => index.toString()}
           numColumns={2}
-          columnWrapperStyle={styles.gridRow}
           renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <Text style={styles.savedPostItem}>{item}</Text>
-            </View>
+            <TouchableOpacity style={styles.postItem}>
+              <Text style={styles.postText}>{item}</Text>
+            </TouchableOpacity>
+          )}
+        />
+
+        <Text style={styles.sectionTitle}>Saved Posts</Text>
+        <FlatList
+          data={savedPosts}
+          numColumns={2}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.postItem}>
+              <Text style={styles.postText}>{item}</Text>
+            </TouchableOpacity>
           )}
         />
       </View>
 
-      {/* Logout Button */}
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>
@@ -454,15 +531,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8F9FA",
-    padding: 20,
   },
   title: {
     fontSize: 30,
     fontWeight: "800",
-    textAlign: "left",
-    marginBottom: 30,
+    textAlign: "center",
+    marginBottom: 10,
     color: "#2D3436",
-    lineHeight: 40,
+    lineHeight: 50,
   },
   appIcon: {
     width: 200,
@@ -476,8 +552,10 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: "rgb(144, 200, 13)",
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 15,
     marginTop: 15,
+    width: '80%',
+    alignSelf: 'center',
   },
   buttonText: {
     color: "rgb(255, 255, 255)",
@@ -497,15 +575,11 @@ const styles = StyleSheet.create({
   socialAuthContainer: {
     marginBottom: 30,
   },
-  sectionTitle: {
-    fontSize: 16,
-    color: "#636E72",
-    marginBottom: 20,
-    textAlign: 'center',
-  },
   phoneInputContainer: {
     flexDirection: 'row',
     marginBottom: 15,
+    width: '90%', // Added width constraint
+    alignSelf: 'center',
   },
   phoneInput: {
     flex: 1,
@@ -523,8 +597,8 @@ const styles = StyleSheet.create({
   },
   verifyButton: {
     backgroundColor: 'rgb(0, 139, 209)',
-    paddingHorizontal: 20,
-    borderRadius: 10,
+    paddingHorizontal: 15,
+    borderRadius: 15,
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -540,8 +614,10 @@ const styles = StyleSheet.create({
   googleButton: {
     backgroundColor: '#FFF',
     padding: 10,
-    borderRadius: 5,
+    borderRadius: 15,
     flexDirection: 'row',
+    width: '80%',
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -576,6 +652,8 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 50,
+    width: '90%',
+    alignSelf: 'center',
     backgroundColor: '#FFF',
     borderRadius: 10,
     paddingHorizontal: 15,
@@ -591,6 +669,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 10,
+    alignSelf: 'center',
+    width: '90%',
   },
   emailButton: {
     flex: 1,
@@ -611,35 +691,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   // Profile section styles
-  profileHeader: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  profileImageContainer: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    alignSelf: "auto",
-  },
   profileTextContainer: {
     flex: 1,
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#FFF',
-  },
-  inputSection: {
-    marginBottom: 10,
-  },
-  inputSectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
+
   username: {
     marginLeft: 10,
     marginTop: 10,
@@ -680,17 +735,131 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 5,
   },
+  profileHeader: {
+    flexDirection: 'row',
+    padding: 20,
+    backgroundColor: "white",
+    alignItems: 'flex-start',
+  },
+  profileImageContainer: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 100, // Increased size
+    height: 100,
+    borderRadius: 50,
+    marginRight: 20,
+    borderWidth: 2,
+    borderColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+  },
+  editPhotoBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: "#FFA500",
+    borderRadius: 12,
+    padding: 4,
+  },
+  personalInfoContainer: {
+    flex: 1,
+    marginLeft: 20,
+  },
+  contentContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  inputSection: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
+  inputSectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 16,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 1,
+  },
+  infoLabel: {
+    width: '35%',
+    fontSize: 14,
+    color: "#666",
+    marginRight: 12,
+  },
+  infoValueContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE",
+  },
+  infoValue: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+  },
+  editableInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#333",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FFA500",
+  },
+  postsContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginVertical: 15,
+  },
+  postItem: {
+    flex: 1,
+    aspectRatio: 1,
+    margin: 5,
+    backgroundColor: "white",
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  postText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: 'center',
+  },
   logoutButton: {
-    backgroundColor: "rgba(255, 188, 32, 0.7)",
-    padding: 15,
-    borderRadius: 5,
-    marginTop: 20,
+    backgroundColor: "#FFA500",
+    borderRadius: 15,
+    padding: 10,
+    width: '80%',
+    alignSelf: 'center',
+    alignItems: 'center',
   },
   logoutButtonText: {
-    color: "rgb(255, 255, 255)",
-    textAlign: "center",
-    fontWeight: "bold",
+    color: "white",
     fontSize: 16,
+    fontWeight: "600",
   },
   gridRow: {
     justifyContent: "space-between",
