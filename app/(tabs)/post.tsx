@@ -4,12 +4,14 @@
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import { Video, ResizeMode } from "expo-av";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView, FlatList } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, addDoc } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
 import { useUserStore } from "../data/store";
 import { useRouter, useFocusEffect } from "expo-router";
+import { ItemTag } from "../data/models";
+import TagSelector from '../components/TagSelection';
 
 const MAX_TITLE_LENGTH = 40;
 const MAX_DESCRIPTION_LENGTH = 150;
@@ -28,6 +30,8 @@ export default function Post() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [recordingTime, setRecordingTime] = useState(0); // recording time
+  // item tag
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const { userAuth: storeUserAuth, userData: storeUserData } = useUserStore();
   const router = useRouter();
@@ -41,6 +45,7 @@ export default function Post() {
     setTitle("");
     setDescription("");
     setRecordingTime(0);
+    setSelectedTags([]);
   };
 
   // useFocusEffect to listen focusing
@@ -111,7 +116,7 @@ export default function Post() {
 
   if (!permission.granted || !microphonePermission.granted) {
     return (
-      <View style={styles.container}>
+      <View style={styles.blackContainer}>
         <Text style={styles.messageTitle}>
           To record in PayNothing
         </Text>
@@ -222,6 +227,7 @@ export default function Post() {
         upload_time: Date.now(),
         username: storeUserData?.username || "Unknown User",
         likes: 0,
+        // tags: selectedTags || [ItemTag.OTHER],
       });
       console.log("Record created:", docRef.id);
 
@@ -263,7 +269,8 @@ export default function Post() {
               shouldPlay={false}
               resizeMode={ResizeMode.CONTAIN}
             />
-            <Text style={styles.uploadTitle}>Video recorded successfully!</Text>
+
+            {/* Inputs */}
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.commonInput}
@@ -273,10 +280,11 @@ export default function Post() {
                 value={title}
                 onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
               />
-              <Text style={styles.charCount}>
-                {title.length}/{MAX_TITLE_LENGTH}
-              </Text>
-              <View style={styles.underline} />
+              <View style={styles.underline} >
+                <Text style={styles.charCount}>
+                  {title.length}/{MAX_TITLE_LENGTH}
+                </Text>
+              </View>
             </View>
             <View style={[styles.inputContainer, styles.lastInputContainer]}>
               <TextInput
@@ -288,17 +296,25 @@ export default function Post() {
                 value={description}
                 onChangeText={(text) => setDescription(text.slice(0, MAX_DESCRIPTION_LENGTH))}
               />
-              <Text style={styles.charCount}>
-                {description.length}/{MAX_DESCRIPTION_LENGTH}
-              </Text>
-              <View style={styles.underline} />
+              <View style={styles.underline} >
+                <Text style={styles.charCount}>
+                  {description.length}/{MAX_DESCRIPTION_LENGTH}
+                </Text>
+              </View>
             </View>
+
+            {/* Tags */}
+            <View style={styles.tagSelectorContainer}>
+              <TagSelector onTagsSelected={(tags) => setSelectedTags(tags)} />
+            </View>
+
+            {/* Buttons at Bottom */}
             <View style={styles.bottomButtonContainer}>
               <TouchableOpacity onPress={() => setVideoUri(null)} style={styles.retakeButton}>
-                <Text style={styles.buttonText}>Retake</Text>
+                <Text style={styles.bottomText}>Retake</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleUpload} style={styles.uploadButton}>
-                <Text style={styles.buttonText}>Upload Video</Text>
+                <Text style={styles.bottomText}>Upload Video</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -330,15 +346,20 @@ export default function Post() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  blackContainer: {
     flex: 1,
     justifyContent: "center",
     backgroundColor: "rgb(0, 0, 0)",
   },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgb(255, 255, 255)",
+  },
   messageTitle: {
     textAlign: "center",
     paddingBottom: 10,
-    color: "rgb(255, 255, 255)",
+    color: "rgb(0, 0, 0)",
     fontSize: 20,
   },
   message: {
@@ -383,17 +404,16 @@ const styles = StyleSheet.create({
     marginVertical: 20,
   },
   inputContainer: {
-    width: "80%",
-    marginVertical: 10,
+    width: "90%",
   },
   // give space to bottomButton
   lastInputContainer: {
-    paddingBottom: 70,
+    marginTop: 10,
   },
   commonInput: {
-    padding: 10,
-    color: "white",
-    fontSize: 16,
+    padding: 5,
+    color: "black",
+    fontSize: 14,
   },
   descriptionInput: {
     textAlignVertical: "top",
@@ -404,14 +424,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   underline: {
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: "#ddd",
   },
-  uploadTitle: {
-    color: "rgb(255, 255, 255)",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
+  tagSelectorContainer: {
+    width: "90%",
+    marginTop: 0,
+    marginBottom: 20,
   },
   permissionButton: {
     marginVertical: 10,
@@ -445,7 +464,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   retakeButton: {
-    backgroundColor: "rgb(41, 41, 41)",
+    backgroundColor: "rgb(230, 230, 230)",
     padding: 10,
     borderRadius: 10,
     marginHorizontal: 10,
@@ -466,6 +485,11 @@ const styles = StyleSheet.create({
     color: "rgb(255, 255, 255)",
     fontSize: 16,
     fontWeight: "bold",
+    textAlign: "center",
+  },
+  bottomText: {
+    color: "rgb(0, 0, 0)",
+    fontSize: 16,
     textAlign: "center",
   },
 });
