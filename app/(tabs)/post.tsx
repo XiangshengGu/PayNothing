@@ -227,7 +227,7 @@ export default function Post() {
         upload_time: Date.now(),
         username: storeUserData?.username || "Unknown User",
         likes: 0,
-        // tags: selectedTags || [ItemTag.OTHER],
+        tags: selectedTags || [ItemTag.OTHER],
       });
       console.log("Record created:", docRef.id);
 

@@ -294,6 +294,9 @@ export default function Home()
         data={filteredVideos}
         keyExtractor={(item) => item.id}
         renderItem={renderVideo}
+        windowSize={3} // Default is 21, reduce to 3 to save memory
+        initialNumToRender={2} // Initial Render Quantity
+        maxToRenderPerBatch={2} // The number of times to render per scroll
         pagingEnabled
         showsVerticalScrollIndicator={false}
         snapToAlignment="start"
