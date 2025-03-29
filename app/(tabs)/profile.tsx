@@ -17,6 +17,7 @@ import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { useUserStore } from "../data/store";
+import { VideoItem } from "../data/models";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -38,8 +39,8 @@ export default function Profile() {
   const [age, setAge] = useState("");
   const [isEditingAge, setIsEditingAge] = useState(false);
   const [location, setLocation] = useState("Unknown");
-  const [savedPosts, setSavedPosts] = useState<string[]>([]);
-  const [yourPosts, setYourPosts] = useState<string[]>([]);
+  const [savedPosts, setSavedPosts] = useState<VideoItem[]>([]);
+  const [yourPosts, setYourPosts] = useState<VideoItem[]>([]);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -86,8 +87,6 @@ export default function Profile() {
           setGender(userData.gender || "");
           setAge(userData.age ? userData.age.toString() : "");
           setLocation(userData.location || "Unknown");
-          setSavedPosts(userData.savedVideos || []);
-          setYourPosts(userData.posts || []);
 
           // update store
           const userDataFromDB = {
@@ -100,6 +99,44 @@ export default function Profile() {
           // console.log('user-auth, user-data', currentUser, userDataFromDB);
           // set global store of user
           setStoreUser(currentUser, userDataFromDB);
+
+          // Fetch posts and saved videos data
+          const fetchVideoData = async (videoIds: string[]) => {
+            if (!videoIds || videoIds.length === 0) return [];
+            
+            const videoPromises = videoIds.map(async (videoId) => {
+              const videoDoc = await getDoc(doc(FIRESTORE_DB, "videos", videoId));
+              if (videoDoc.exists()) {
+                const videoTempInfo = videoDoc.data();
+                return {
+                  id: videoId,
+                  title: videoTempInfo?.title || '',
+                  username: videoTempInfo?.username || '',
+                  userid: videoTempInfo?.userId || '',
+                  description: videoTempInfo?.description || '',
+                  uploadTime: videoTempInfo?.upload_time || 0,
+                  likes: videoTempInfo?.likes || 0,
+                  videoUrl: videoTempInfo?.video_url || '',
+                  tags: videoTempInfo?.tags || [],
+                };
+              }
+              return null;
+            });
+            
+            const videos = await Promise.all(videoPromises);
+            return videos.filter(video => video !== null);
+          };
+          // Fetch and set posts data
+          const posts = userData.posts || [];
+          const postsWithData = await fetchVideoData(posts);
+          setYourPosts(postsWithData);
+          // console.log('ourPosts', postsWithData);
+
+          // Fetch and set saved videos data
+          const savedVideos = userData.savedVideos || [];
+          const savedVideosWithData = await fetchVideoData(savedVideos);
+          setSavedPosts(savedVideosWithData);
+          // console.log('savedPosts', savedVideosWithData);
         }
       }
     });
@@ -369,7 +406,8 @@ export default function Profile() {
           style={styles.listContainer}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.postItem}>
-              <Text style={styles.postText}>{item}</Text>
+              <Text style={styles.postText}>{item.title}</Text>
+              <Text style={styles.postText}>{item.description}</Text>
             </TouchableOpacity>
           )}
         />
@@ -382,7 +420,8 @@ export default function Profile() {
           style={styles.listContainer}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.postItem}>
-              <Text style={styles.postText}>{item}</Text>
+              <Text style={styles.postText}>{item.title}</Text>
+              <Text style={styles.postText}>{item.description}</Text>
             </TouchableOpacity>
           )}
         />
