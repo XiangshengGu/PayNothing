@@ -58,17 +58,6 @@ export default function Post() {
     }, [])
   );
 
-  // check if login
-//   useEffect(() => {
-//     if (!storeUserAuth) {
-//       router.push({
-//         pathname: "/profile",
-//         params: { fromPost: "true", timestamp: Date.now().toString() },
-//       }); // jump to profile page
-//     }
-//     // console.log('post',storeUserAuth,storeUserData);
-//   }, [storeUserAuth]);
-
   // apply for permissions directly
   useEffect(() => {
     const requestPermissions = async () => {

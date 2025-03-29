@@ -94,6 +94,8 @@ export default function Profile() {
             username: userDoc.data()?.username || "Unknown User",
             age: userDoc.data()?.age || 0,
             gender: userDoc.data()?.gender || "Unknown",
+            posts: userDoc.data()?.posts || [],
+            savedVideos: userDoc.data()?.savedVideos || [],
           };
           // console.log('user-auth, user-data', currentUser, userDataFromDB);
           // set global store of user
@@ -254,146 +256,6 @@ export default function Profile() {
     }
   };
 
-//   if (!user) {
-//     // Authentication Form
-//     return (
-//       <View style={styles.container}>
-//         <Text style={styles.title}>Welcome!</Text>
-//
-//         <FirebaseRecaptchaVerifierModal
-//           ref={recaptchaVerifier}
-//           firebaseConfig={firebaseConfig}
-//           attemptInvisibleVerification
-//         />
-//
-//         {/* Social Auth Section */}
-//         <View style={styles.socialAuthContainer}>
-//           {/* Phone Authentication */}
-//           {!verificationId ? (
-//             <>
-//               <View style={styles.phoneInputContainer}>
-//                 <TextInput
-//                   placeholder="Enter phone number"
-//                   value={phoneNumber}
-//                   onChangeText={setPhoneNumber}
-//                   style={styles.phoneInput}
-//                   keyboardType="phone-pad"
-//                   placeholderTextColor="#666"
-//                 />
-//                 <TouchableOpacity
-//                   style={styles.verifyButton}
-//                   onPress={async () => {
-//                     try {
-//                       const phoneProvider = new PhoneAuthProvider(FIREBASE_AUTH);
-//                       const vid = await phoneProvider.verifyPhoneNumber(
-//                         '+1 ' + phoneNumber,
-//                         recaptchaVerifier.current!
-//                       );
-//                       setVerificationId(vid);
-//                     } catch (error: any) {
-//                       Alert.alert('Error', error.message);
-//                     }
-//                   }}
-//                 >
-//                   <Text style={styles.verifyButtonText}>Send Code</Text>
-//                 </TouchableOpacity>
-//               </View>
-//             </>
-//           ) : (
-//             <>
-//               <TextInput
-//                 placeholder="Enter verification code"
-//                 value={verificationCode}
-//                 onChangeText={setVerificationCode}
-//                 style={styles.input}
-//                 keyboardType="number-pad"
-//               />
-//               <TouchableOpacity
-//                 style={styles.button}
-//                 onPress={async () => {
-//                   try {
-//                     if (!verificationId) throw new Error('No verification ID');
-//                     const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-//                     await signInWithCredential(FIREBASE_AUTH, credential);
-//                     setVerificationId(null);
-//                   } catch (error: any) {
-//                     Alert.alert('Error', error.message);
-//                   }
-//                 }}
-//               >
-//                 <Text style={styles.buttonText}>Verify Code</Text>
-//               </TouchableOpacity>
-//             </>
-//           )}
-//
-//           {/* Google Sign-In Button */}
-//           <TouchableOpacity
-//             style={styles.googleButton}
-//             onPress={() => promptAsync()}
-//             disabled={!request}
-//           >
-//             <Image
-//               source={require("../../assets/images/google.png")}
-//               style={styles.googleIcon}
-//             />
-//             <Text style={styles.googleButtonText}>Sign in with Google</Text>
-//           </TouchableOpacity>
-//         </View>
-//
-//         {/* Email Auth Section */}
-//         <View style={styles.emailAuthContainer}>
-//           <Text style={styles.separator}>Or use your email address to sign up/sign in</Text>
-//
-//           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-//           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
-//
-//           <TextInput
-//             style={styles.input}
-//             placeholder="Email address"
-//             autoCapitalize="none"
-//             value={email}
-//             onChangeText={setEmail}
-//             placeholderTextColor="#666"
-//           />
-//
-//           <TextInput
-//             style={styles.input}
-//             placeholder="Password"
-//             secureTextEntry
-//             value={password}
-//             onChangeText={setPassword}
-//             placeholderTextColor="#666"
-//           />
-//
-//           <View style={styles.emailButtonContainer}>
-//             <TouchableOpacity
-//               style={[styles.emailButton, styles.loginButton]}
-//               onPress={handleLogin}
-//             >
-//               <Text style={styles.emailButtonText}>Login</Text>
-//             </TouchableOpacity>
-//
-//             <TouchableOpacity
-//               style={[styles.emailButton, styles.signupButton]}
-//               onPress={handleSignUp}
-//             >
-//               <Text style={styles.emailButtonText}>Create Account</Text>
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-//
-//         {/* App icon at the bottom */}
-//         <Image
-//           source={require("../../assets/images/icon.png")}
-//           style={styles.appIcon}
-//         />
-//
-//         {/* TODO: Add the banner ad */}
-//
-//       </View>
-//     );
-//   }
-
   // User Profile
   return (
     <View style={styles.container}>
@@ -498,11 +360,13 @@ export default function Profile() {
         </View>
       </View>
       {/* Posts Sections */}
-      <View style={styles.postsContainer}>
+      <View style={styles.postsContainer}> 
         <Text style={styles.sectionTitle}>Your Posts</Text>
         <FlatList
           data={yourPosts}
           numColumns={2}
+          contentContainerStyle={styles.listContent}
+          style={styles.listContainer}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.postItem}>
               <Text style={styles.postText}>{item}</Text>
@@ -514,6 +378,8 @@ export default function Profile() {
         <FlatList
           data={savedPosts}
           numColumns={2}
+          contentContainerStyle={styles.listContent}
+          style={styles.listContainer}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.postItem}>
               <Text style={styles.postText}>{item}</Text>
@@ -831,6 +697,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginVertical: 15,
   },
+  listContainer: {
+    flex: 0, // This prevents the FlatList from expanding
+    maxHeight: 200, // Set a maximum height for each list
+    marginBottom: 20, // Add some space between the lists
+  },
+  listContent: {
+    flexGrow: 0, // This prevents the content from expanding
+  },
   postItem: {
     flex: 1,
     aspectRatio: 1,
@@ -844,6 +718,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    height: 50, // Fixed height for each item
+    maxHeight: 50, // Ensure it doesn't grow beyond this
   },
   postText: {
     fontSize: 14,

@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, Image, StyleSheet } from "react-native";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCredential, PhoneAuthProvider,
   onAuthStateChanged, User } from "firebase/auth";
-import { FIREBASE_AUTH, firebaseConfig } from "../FirebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
+import { useUserStore } from "./data/store";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,10 +29,26 @@ export default function AuthScreen() {
   });
 
   const router = useRouter();
+  // function of store
+  const { setStoreUser} = useUserStore(); 
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (user: User | null) => {
+    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (user: User | null) => {
       if (user) {
+        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
+        if (userDoc.exists()) {
+          // update store
+          const userDataFromDB = {
+            username: userDoc.data()?.username || "Unknown User",
+            age: userDoc.data()?.age || 0,
+            gender: userDoc.data()?.gender || "Unknown",
+            posts: userDoc.data()?.posts || [],
+            savedVideos: userDoc.data()?.savedVideos || [],
+          };
+          // console.log('user-auth, user-data', currentUser, userDataFromDB);
+          // set global store of user
+          setStoreUser(user, userDataFromDB);
+        }
         router.replace("/(tabs)");
       }
     });
