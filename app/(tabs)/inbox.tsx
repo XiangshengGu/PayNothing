@@ -7,17 +7,18 @@ import { onAuthStateChanged } from "firebase/auth";
 
 export default function Inbox() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
+//   const [user, setUser] = useState(null);
   const [conversations, setConversations] = useState([]);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-      }
-    });
-    return unsubscribe;
-  }, []);
+//   useEffect(() => {
+//     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
+//       if (currentUser) {
+//         setUser(currentUser);
+//       }
+//     });
+//     return unsubscribe;
+//   }, []);
+  const user = FIREBASE_AUTH.currentUser;
 
   useEffect(() => {
     if (user) {

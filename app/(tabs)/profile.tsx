@@ -7,9 +7,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
 import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../../FirebaseConfig";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, 
-         signOut, User, updateProfile, 
-         PhoneAuthProvider, signInWithCredential, 
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
+         signOut, User, updateProfile,
+         PhoneAuthProvider, signInWithCredential,
          GoogleAuthProvider } from "firebase/auth";
 import { doc, setDoc, addDoc, getDoc } from "firebase/firestore";
 import * as Location from "expo-location";
@@ -64,7 +64,7 @@ export default function Profile() {
       });
     }
   }, [paramOfPage]);
-  
+
   // Handle Google Sign-In response
   useEffect(() => {
     if (response?.type === 'success') {
@@ -88,7 +88,7 @@ export default function Profile() {
           setLocation(userData.location || "Unknown");
 
           // update store
-          const userDataFromDB = { 
+          const userDataFromDB = {
             username: userDoc.data()?.username || "Unknown User",
             age: userDoc.data()?.age || 0,
             gender: userDoc.data()?.gender || "Unknown",
@@ -162,13 +162,13 @@ export default function Profile() {
       const uri = pickerResult.assets[0].uri;
       const response = await fetch(uri);
       const blob = await response.blob();
-      
+
       const storage = getStorage();
       const storageRef = ref(storage, `profile-pictures/${user.uid}`);
-      
+
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
-      
+
       await updateProfile(user as User, { photoURL: downloadURL });
       setProfileImage(downloadURL);
     }
@@ -179,7 +179,7 @@ export default function Profile() {
       setProfileImage(user.photoURL);
     }
   }, [user]);
-  
+
   <Image
     source={profileImage ? { uri: profileImage } : require("../../assets/images/profile.png")}
     style={styles.profileImage}
@@ -252,152 +252,152 @@ export default function Profile() {
     }
   };
 
-  if (!user) {
-    // Authentication Form
-    return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Welcome!</Text>
-
-        <FirebaseRecaptchaVerifierModal
-          ref={recaptchaVerifier}
-          firebaseConfig={firebaseConfig}
-          attemptInvisibleVerification
-        />
-
-        {/* Social Auth Section */}
-        <View style={styles.socialAuthContainer}>
-          {/* Phone Authentication */}
-          {!verificationId ? (
-            <>
-              <View style={styles.phoneInputContainer}>
-                <TextInput
-                  placeholder="Enter phone number"
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  style={styles.phoneInput}
-                  keyboardType="phone-pad"
-                  placeholderTextColor="#666"
-                />
-                <TouchableOpacity
-                  style={styles.verifyButton}
-                  onPress={async () => {
-                    try {
-                      const phoneProvider = new PhoneAuthProvider(FIREBASE_AUTH);
-                      const vid = await phoneProvider.verifyPhoneNumber(
-                        '+1 ' + phoneNumber,
-                        recaptchaVerifier.current!
-                      );
-                      setVerificationId(vid);
-                    } catch (error: any) {
-                      Alert.alert('Error', error.message);
-                    }
-                  }}
-                >
-                  <Text style={styles.verifyButtonText}>Send Code</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              <TextInput
-                placeholder="Enter verification code"
-                value={verificationCode}
-                onChangeText={setVerificationCode}
-                style={styles.input}
-                keyboardType="number-pad"
-              />
-              <TouchableOpacity
-                style={styles.button}
-                onPress={async () => {
-                  try {
-                    if (!verificationId) throw new Error('No verification ID');
-                    const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
-                    await signInWithCredential(FIREBASE_AUTH, credential);
-                    setVerificationId(null);
-                  } catch (error: any) {
-                    Alert.alert('Error', error.message);
-                  }
-                }}
-              >
-                <Text style={styles.buttonText}>Verify Code</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* Google Sign-In Button */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={() => promptAsync()}
-            disabled={!request}
-          >
-            <Image 
-              source={require("../../assets/images/google.png")}
-              style={styles.googleIcon}
-            />
-            <Text style={styles.googleButtonText}>Sign in with Google</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Email Auth Section */}
-        <View style={styles.emailAuthContainer}>
-          <Text style={styles.separator}>Or use your email address to sign up/sign in</Text>
-          
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-          {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            placeholderTextColor="#666"
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            placeholderTextColor="#666"
-          />
-
-          <View style={styles.emailButtonContainer}>
-            <TouchableOpacity 
-              style={[styles.emailButton, styles.loginButton]} 
-              onPress={handleLogin}
-            >
-              <Text style={styles.emailButtonText}>Login</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.emailButton, styles.signupButton]} 
-              onPress={handleSignUp}
-            >
-              <Text style={styles.emailButtonText}>Create Account</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* App icon at the bottom */}
-        <Image 
-          source={require("../../assets/images/icon.png")}
-          style={styles.appIcon}
-        />
-
-        {/* TODO: Add the banner ad */}
-
-      </View>
-    );
-  }
+//   if (!user) {
+//     // Authentication Form
+//     return (
+//       <View style={styles.container}>
+//         <Text style={styles.title}>Welcome!</Text>
+//
+//         <FirebaseRecaptchaVerifierModal
+//           ref={recaptchaVerifier}
+//           firebaseConfig={firebaseConfig}
+//           attemptInvisibleVerification
+//         />
+//
+//         {/* Social Auth Section */}
+//         <View style={styles.socialAuthContainer}>
+//           {/* Phone Authentication */}
+//           {!verificationId ? (
+//             <>
+//               <View style={styles.phoneInputContainer}>
+//                 <TextInput
+//                   placeholder="Enter phone number"
+//                   value={phoneNumber}
+//                   onChangeText={setPhoneNumber}
+//                   style={styles.phoneInput}
+//                   keyboardType="phone-pad"
+//                   placeholderTextColor="#666"
+//                 />
+//                 <TouchableOpacity
+//                   style={styles.verifyButton}
+//                   onPress={async () => {
+//                     try {
+//                       const phoneProvider = new PhoneAuthProvider(FIREBASE_AUTH);
+//                       const vid = await phoneProvider.verifyPhoneNumber(
+//                         '+1 ' + phoneNumber,
+//                         recaptchaVerifier.current!
+//                       );
+//                       setVerificationId(vid);
+//                     } catch (error: any) {
+//                       Alert.alert('Error', error.message);
+//                     }
+//                   }}
+//                 >
+//                   <Text style={styles.verifyButtonText}>Send Code</Text>
+//                 </TouchableOpacity>
+//               </View>
+//             </>
+//           ) : (
+//             <>
+//               <TextInput
+//                 placeholder="Enter verification code"
+//                 value={verificationCode}
+//                 onChangeText={setVerificationCode}
+//                 style={styles.input}
+//                 keyboardType="number-pad"
+//               />
+//               <TouchableOpacity
+//                 style={styles.button}
+//                 onPress={async () => {
+//                   try {
+//                     if (!verificationId) throw new Error('No verification ID');
+//                     const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
+//                     await signInWithCredential(FIREBASE_AUTH, credential);
+//                     setVerificationId(null);
+//                   } catch (error: any) {
+//                     Alert.alert('Error', error.message);
+//                   }
+//                 }}
+//               >
+//                 <Text style={styles.buttonText}>Verify Code</Text>
+//               </TouchableOpacity>
+//             </>
+//           )}
+//
+//           {/* Google Sign-In Button */}
+//           <TouchableOpacity
+//             style={styles.googleButton}
+//             onPress={() => promptAsync()}
+//             disabled={!request}
+//           >
+//             <Image
+//               source={require("../../assets/images/google.png")}
+//               style={styles.googleIcon}
+//             />
+//             <Text style={styles.googleButtonText}>Sign in with Google</Text>
+//           </TouchableOpacity>
+//         </View>
+//
+//         {/* Email Auth Section */}
+//         <View style={styles.emailAuthContainer}>
+//           <Text style={styles.separator}>Or use your email address to sign up/sign in</Text>
+//
+//           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+//           {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+//
+//           <TextInput
+//             style={styles.input}
+//             placeholder="Email address"
+//             autoCapitalize="none"
+//             value={email}
+//             onChangeText={setEmail}
+//             placeholderTextColor="#666"
+//           />
+//
+//           <TextInput
+//             style={styles.input}
+//             placeholder="Password"
+//             secureTextEntry
+//             value={password}
+//             onChangeText={setPassword}
+//             placeholderTextColor="#666"
+//           />
+//
+//           <View style={styles.emailButtonContainer}>
+//             <TouchableOpacity
+//               style={[styles.emailButton, styles.loginButton]}
+//               onPress={handleLogin}
+//             >
+//               <Text style={styles.emailButtonText}>Login</Text>
+//             </TouchableOpacity>
+//
+//             <TouchableOpacity
+//               style={[styles.emailButton, styles.signupButton]}
+//               onPress={handleSignUp}
+//             >
+//               <Text style={styles.emailButtonText}>Create Account</Text>
+//             </TouchableOpacity>
+//           </View>
+//         </View>
+//
+//         {/* App icon at the bottom */}
+//         <Image
+//           source={require("../../assets/images/icon.png")}
+//           style={styles.appIcon}
+//         />
+//
+//         {/* TODO: Add the banner ad */}
+//
+//       </View>
+//     );
+//   }
 
   // User Profile
   return (
     <View style={styles.container}>
       {/* Profile Header with Side-by-Side Layout */}
       <View style={styles.profileHeader}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileImageContainer}
           onPress={handleProfilePicturePress}
         >
@@ -423,7 +423,7 @@ export default function Profile() {
               onSubmitEditing={handleEditUsername}
             />
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.infoValueContainer}
               onPress={() => setIsEditingUsername(true)}
             >
@@ -447,7 +447,7 @@ export default function Profile() {
                 }}
               />
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.infoValueContainer}
                 onPress={handleGenderClick}
               >
@@ -472,7 +472,7 @@ export default function Profile() {
                 }}
               />
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.infoValueContainer}
                 onPress={handleAgeClick}
               >
@@ -485,7 +485,7 @@ export default function Profile() {
           {/* Location */}
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Location:</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.infoValueContainer}
               onPress={handleEditLocation}
             >

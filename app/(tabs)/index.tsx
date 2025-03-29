@@ -44,7 +44,7 @@ function DescriptionOverlay({ video, onClose }: { video: VideoItem; onClose: () 
 
 export default function Home() 
 {
-  const [user, setUser] = useState<User | null>(null);
+//   const [user, setUser] = useState<User | null>(null);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [activeTab, setActiveTab] = useState("latest");
   const [searchQuery, setSearchQuery] = useState("");
@@ -191,12 +191,13 @@ export default function Home()
       );
     };
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-      setUser(currentUser);
-    });
-    return unsubscribe;
-  }, []);
+//   useEffect(() => {
+//     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
+//       setUser(currentUser);
+//     });
+//     return unsubscribe;
+//   }, []);
+  const user = FIREBASE_AUTH.currentUser;
   
   useEffect(() => {
     translateX.value = 0;
@@ -229,10 +230,10 @@ export default function Home()
 
   // Handle likes
   const handleLike = async (videoId: string) => {
-    if (!user) {
-      Alert.alert("Login Required", "Please log in to like posts");
-      return;
-    }
+//     if (!user) {
+//       Alert.alert("Login Required", "Please log in to like posts");
+//       return;
+//     }
     try {
       const videoRef = doc(FIRESTORE_DB, "videos", videoId);
       const isLiked = likedVideos.includes(videoId);
