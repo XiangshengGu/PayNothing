@@ -6,6 +6,7 @@ export interface VideoItem {
     uploadTime: number;
     likes: number;
     videoUrl: string;
+    tags: ItemTag[];
 }
 
 export interface user {
@@ -25,4 +26,4 @@ export enum ItemTag {
     BEAUTY_PERSONAL_CARE = "Beauty & Personal Care",
     GAMES_TOYS = "Games & Toys",
     OTHER = "Other",
-  }
+}

@@ -402,6 +402,10 @@ const styles = StyleSheet.create({
     width: 300,
     height: 200,
     marginVertical: 20,
+    shadowColor: 'black',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   inputContainer: {
     width: "90%",

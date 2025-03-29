@@ -10,7 +10,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { collection, onSnapshot, doc, updateDoc, increment} from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
-import { VideoItem } from "../data/models";
+import { VideoItem, ItemTag } from "../data/models";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 
@@ -32,6 +32,9 @@ export default function Home()
   const [curPlayingIndex, setCurPlayingIndex] = useState<number | null>(null); // save the index of the current playing video
   const [playStatus, setPlayStatus] = useState<boolean[]>([]);  // store all videos' status
   const [refreshing, setRefreshing] = useState(false);
+  // Tag filter vars
+  const [showTagDropdown, setShowTagDropdown] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<ItemTag | null>(null);
   const navigation = useNavigation();
   const router = useRouter();
 
@@ -53,6 +56,7 @@ export default function Home()
         uploadTime: doc.data().upload_time || 0,
         likes: doc.data().likes || 0,
         videoUrl: doc.data().video_url,
+        tags: doc.data().tags || [ItemTag.OTHER],
       }));
 
       setVideos(videoData);
@@ -138,6 +142,20 @@ export default function Home()
       );
       setFilteredVideos(filtered);
     }
+  };
+
+  // Filter video by tag
+  const filterByTag = (tag: ItemTag | null) => {
+    setSelectedTag(tag);
+    if (!tag) {
+      setFilteredVideos(videos);
+    } else {
+      const filtered = videos.filter(video => 
+        video.tags.includes(tag)
+      );
+      setFilteredVideos(filtered);
+    }
+    setShowTagDropdown(false);
   };
 
   // Handle video playback
@@ -279,15 +297,55 @@ export default function Home()
             >Trending</Text>
           </TouchableOpacity>
         </View>
-        {/* Search Bar */}
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Looking for specific items?"
-          placeholderTextColor="#666"
-          value={searchQuery}
-          onChangeText={handleSearch}
-        />
+        {/* Search Bar and tag filter*/}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Looking for specific items?"
+            placeholderTextColor="#666"
+            value={searchQuery}
+            onChangeText={handleSearch}
+          />
+          
+          <TouchableOpacity 
+            onPress={() => setShowTagDropdown(!showTagDropdown)}
+            style={styles.filterButton}
+          >
+            <Image
+              source={require("../../assets/images/tag-sort.png")}
+              style={styles.filterIcon}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Label drop-down box */}
+      {showTagDropdown && (
+        <View style={styles.tagDropdown}>
+          <TouchableOpacity 
+            style={[
+              styles.tagItem,
+              selectedTag === null && styles.selectedTagItem
+            ]}
+            onPress={() => filterByTag(null)}
+          >
+            <Text style={styles.tagText}>All Categories</Text>
+          </TouchableOpacity>
+          
+          {Object.values(ItemTag).map((tag) => (
+            <TouchableOpacity 
+              key={tag}
+              style={[
+                styles.tagItem,
+                selectedTag === tag && styles.selectedTagItem
+              ]}
+              onPress={() => filterByTag(tag)}
+            >
+              <Text style={styles.tagText}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Video List */}
       <FlatList
@@ -317,6 +375,7 @@ export default function Home()
     container: {
       flex: 1,
       backgroundColor: "#0A0A0A",
+      position: 'relative',
     },
     topBar: {
       height: 60,
@@ -335,7 +394,7 @@ export default function Home()
       padding: 3,
     },
     tabButton: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 20,
     },
@@ -348,12 +407,13 @@ export default function Home()
     },
     tabButtonText: {
       color: "#999",
-      fontSize: 14,
+      fontSize: 12,
       fontWeight: "600",
     },
     activeTabButtonText: {
       color: "#000",
     },
+    // search bar and tag filter
     searchBar: {
       flex: 1,
       height: 40,
@@ -362,8 +422,49 @@ export default function Home()
       borderRadius: 20,
       backgroundColor: "#2A2A2A",
       color: "#FFF",
+      fontSize: 12,
+    },
+    searchContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: 5,
+    },
+    filterButton: {
+      marginLeft: 10,
+    },
+    filterIcon: {
+      width: 15,
+      height: 15,
+      tintColor: '#FFF',
+    },
+    tagDropdown: {
+      position: 'absolute',
+      top: 55,
+      right: 0,
+      width: 200,
+      backgroundColor: '#2A2A2A',
+      borderRadius: 8,
+      paddingVertical: 8,
+      shadowColor: 'white',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+      zIndex: 1000,
+    },
+    tagItem: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+    },
+    tagText: {
+      color: '#FFF',
       fontSize: 14,
     },
+    selectedTagItem: {
+      backgroundColor: '#444',
+    },
+    // other
     videoContainer: {
       width: winWidth,
       height: videoContainerHeight,
