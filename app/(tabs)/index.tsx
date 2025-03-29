@@ -3,21 +3,44 @@
 // Also with the assistance of DeepSeek AI (https://www.deepseek.com).
 
 import { Platform, View, Text, StyleSheet, TouchableOpacity, 
-         FlatList, Dimensions, Image, TextInput, ViewToken, Alert } from "react-native";
+  Dimensions, Image, TextInput, Alert } from "react-native";
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { collection, onSnapshot, doc, updateDoc, increment} from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, increment, arrayUnion } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { VideoItem, ItemTag } from "../data/models";
 import { useRouter } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { 
+  Gesture, 
+  GestureDetector, 
+  GestureHandlerRootView,
+} from "react-native-gesture-handler";
+import Animated, { 
+useAnimatedStyle, 
+useSharedValue, 
+SharedValue,
+withTiming, 
+runOnJS 
+} from "react-native-reanimated";
 
 const { width: winWidth, height: winHeight } = Dimensions.get("window");
-// adjust by OS, 60 search bar, 50 navig bar, 65 each page titlebar
-const videoContainerHeight = Platform.OS === "ios" ? winHeight - 44 - 60 - 50 - 64 : winHeight - 24 - 50 - 50 - 64;
+const SWIPE_THRESHOLD = 100;
+const SWIPE_VELOCITY_THRESHOLD = 500;
 
+// DescriptionOverlay component
+function DescriptionOverlay({ video, onClose }: { video: VideoItem; onClose: () => void }) {
+  return (
+    <View style={styles.overlayContainer}>
+      <Text style={styles.overlayDescription}>{video.description}</Text>
+      <TouchableOpacity onPress={onClose}>
+        <Text style={styles.closeButton}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function Home() 
 {
@@ -25,18 +48,148 @@ export default function Home()
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [activeTab, setActiveTab] = useState("latest");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
   const [likes, setLikes] = useState<{ [key: string]: number }>({});
   const [likedVideos, setLikedVideos] = useState<string[]>([]);
-  const videoRefs = useRef<(Video | null)[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showDescription, setShowDescription] = useState(false);
+  const videoRef = useRef<Video>(null);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const [filteredVideos, setFilteredVideos] = useState<VideoItem[]>([]);
+
   const [curPlayingIndex, setCurPlayingIndex] = useState<number | null>(null); // save the index of the current playing video
   const [playStatus, setPlayStatus] = useState<boolean[]>([]);  // store all videos' status
   const [refreshing, setRefreshing] = useState(false);
+  
   // Tag filter vars
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [selectedTag, setSelectedTag] = useState<ItemTag | null>(null);
   const navigation = useNavigation();
   const router = useRouter();
+
+  const handleSwipeComplete = (direction: 'left' | 'right' | 'down') => {
+    const currentVideo = filteredVideos[currentIndex];
+    
+    // Handle actions
+    if (direction === 'right' && currentVideo) {
+      handleLike(currentVideo.id);
+    } else if (direction === 'down' && currentVideo) {
+      handleSave(currentVideo.id);
+    }
+
+    // Move to next video
+    setCurrentIndex(prev => (prev + 1) % filteredVideos.length);
+  };
+
+  const handleSave = async (videoId: string) => {
+    if (!user) {
+      Alert.alert("Login Required", "Please log in to save posts");
+      return;
+    }
+    try {
+      const userRef = doc(FIRESTORE_DB, "users", user.uid);
+      await updateDoc(userRef, {
+        savedVideos: arrayUnion(videoId)
+      });
+    } catch (error) {
+      console.error("Error saving video:", error);
+    }
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value }
+    ],
+    opacity: opacity.value
+  })); 
+  
+  // Gesture Handler
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      translateX.value = 0;
+      translateY.value = 0;
+      opacity.value = 1;
+    })
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+      translateY.value = e.translationY;
+      const dragDistance = Math.sqrt(e.translationX ** 2 + e.translationY ** 2);
+      opacity.value = Math.max(1 - dragDistance / 400, 0.5);
+    })
+    .onEnd((e) => {
+      const isHorizontal = Math.abs(e.translationX) > Math.abs(e.translationY);
+      const isSwipeUp = e.translationY < 0;
+
+      if (isHorizontal || e.translationY > 0) {
+        // Handle left/right/down swipes
+        let targetX = 0;
+        let targetY = 0;
+        let direction: 'left' | 'right' | 'down' | null = null;
+
+        if (isHorizontal) {
+          if (Math.abs(e.translationX) > SWIPE_THRESHOLD || Math.abs(e.velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+            direction = e.translationX > 0 ? 'right' : 'left';
+            targetX = e.translationX > 0 ? winWidth * 1.5 : -winWidth * 1.5;
+          }
+        } else {
+          if (e.translationY > SWIPE_THRESHOLD || e.velocityY > SWIPE_VELOCITY_THRESHOLD) {
+            direction = 'down';
+            targetY = winHeight * 1.5;
+          }
+        }
+
+        if (direction) {
+          translateX.value = withTiming(targetX, { duration: 250 });
+          translateY.value = withTiming(targetY, { duration: 250 });
+          opacity.value = withTiming(0, { duration: 250 }, () => {
+            runOnJS(handleSwipeComplete)(direction!);
+          });
+        } else {
+          translateX.value = withTiming(0);
+          translateY.value = withTiming(0);
+          opacity.value = withTiming(1);
+        }
+      } else if (isSwipeUp) {
+        // Handle swipe up
+        if (Math.abs(e.translationY) > SWIPE_THRESHOLD || Math.abs(e.velocityY) > SWIPE_VELOCITY_THRESHOLD) {
+          runOnJS(setShowDescription)(true);
+        }
+        translateX.value = withTiming(0);
+        translateY.value = withTiming(0);
+        opacity.value = withTiming(1);
+      }
+    });
+
+    const SwipeFeedbackOverlay = ({ translateX, translateY }: { 
+      translateX: SharedValue<number>;
+      translateY: SharedValue<number>;
+    }) => {
+      const overlayStyle = useAnimatedStyle(() => {
+        const x = translateX.value;
+        const y = translateY.value;
+        const dragDistance = Math.sqrt(x ** 2 + y ** 2);
+        const opacity = Math.min(dragDistance / 100, 1); // More intense opacity
+        
+        let color = 'transparent';
+        if (Math.abs(x) > Math.abs(y)) {
+          color = x > 0 ? '#00FF00' : '#FF0000'; // Bright green/red
+        } else if (y > 0) {
+          color = '#FFFF00'; // Bright yellow
+        }
+    
+        return {
+          backgroundColor: color,
+          opacity: opacity * 0.7, // Keep some transparency
+          mixBlendMode: 'screen', // Creates vibrant overlay effect
+        };
+      });
+    
+      return (
+        <Animated.View style={[StyleSheet.absoluteFillObject, overlayStyle]} />
+      );
+    };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
@@ -45,6 +198,13 @@ export default function Home()
     return unsubscribe;
   }, []);
   
+  useEffect(() => {
+    translateX.value = 0;
+    translateY.value = 0;
+    opacity.value = 1;
+    videoRef.current?.playAsync();
+  }, [currentIndex]);
+
   // Fetch video posts from Firestore with real-time updates
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(FIRESTORE_DB, "videos"), (snapshot) => {
@@ -66,18 +226,6 @@ export default function Home()
 
     return () => unsubscribe();
   }, []);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      // Stop all videos when the screen is no longer focused
-      return () => {
-        videoRefs.current.forEach((ref) => {
-          ref?.pauseAsync();  // Pause all videos when navigating away from the screen
-        });
-        setPlayStatus(new Array(videoRefs.current.length).fill(false));
-      };
-    }, [])
-  );
 
   // Handle likes
   const handleLike = async (videoId: string) => {
@@ -144,6 +292,59 @@ export default function Home()
     }
   };
 
+  // Add swipe indicator animations
+  const SwipeIndicators = ({ translateX, translateY }: { 
+    translateX: SharedValue<number>;
+    translateY: SharedValue<number>;
+  }) => {
+    const leftIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(-translateX.value / 50, 1), // Faster opacity buildup
+    transform: [
+      { translateX: -30 + translateX.value * 0.2 },
+      { scale: 1 + (-translateX.value / 200) } // Add scaling effect
+    ],
+  }));
+
+  const rightIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(translateX.value / 50, 1), // Faster opacity buildup
+    transform: [
+      { translateX: 30 + translateX.value * 0.2 },
+      { scale: 1 + (translateX.value / 200) } // Add scaling effect
+    ],
+  }));
+
+  const downIndicatorStyle = useAnimatedStyle(() => ({
+    opacity: Math.min(translateY.value / 50, 1), // Faster opacity buildup
+    transform: [
+      { translateY: 30 + translateY.value * 0.2 },
+      { scale: 1 + (translateY.value / 200) } // Add scaling effect
+    ],
+  }));
+  
+  return (
+    <>
+      <Animated.View style={[styles.swipeIndicatorLeft, leftIndicatorStyle]}>
+        <Image
+          source={require('../../assets/images/dislike.png')}
+          style={styles.indicatorIcon}
+        />
+      </Animated.View>
+      <Animated.View style={[styles.swipeIndicatorRight, rightIndicatorStyle]}>
+        <Image
+          source={require('../../assets/images/like.png')}
+          style={styles.indicatorIcon}
+        />
+      </Animated.View>
+      <Animated.View style={[styles.swipeIndicatorBottom, downIndicatorStyle]}>
+        <Image
+          source={require('../../assets/images/saved-icon.png')}
+          style={styles.indicatorIcon}
+        />
+      </Animated.View>
+    </>
+  );
+};
+
   // Filter video by tag
   const filterByTag = (tag: ItemTag | null) => {
     setSelectedTag(tag);
@@ -158,94 +359,39 @@ export default function Home()
     setShowTagDropdown(false);
   };
 
-  // Handle video playback
-  const handleViewableItemsChanged = ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    videoRefs.current.forEach((ref, index) => {
-      if (ref) {
-        if (viewableItems.some((item) => item.key === filteredVideos[index]?.id)) {
-          ref.playAsync();
-          setCurPlayingIndex(index);
-          setPlayStatus((prev) => prev.map((v, i) => (i === index ? true : false)));
-        } else {
-          ref.pauseAsync();
-        }
-      }
-    });
-  };
-
-  // toggle to Play or Pause
-  const togglePlayPause = (index: number) => {
-    const isPlaying = playStatus[index];
-    if (isPlaying) {
-      videoRefs.current[index]?.pauseAsync();
-    } else {
-      videoRefs.current[index]?.playAsync();
-    }
-    setPlayStatus((prev) => prev.map((v, i) => (i === index ? !isPlaying : v)));
-  };
-
   // Pull down to refresh
   const onRefresh = async () => {
     setRefreshing(true);
     setRefreshing(false);
   };
 
-  const renderVideo = ({ item, index }: { item: VideoItem; index: number }) => (
-    <TouchableOpacity 
-      activeOpacity={0.9} 
+  const renderVideo = (item: VideoItem, index: number) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
       style={styles.videoContainer}
-      onPress={() => togglePlayPause(index)}
     >
       <Video
-        ref={(ref) => (videoRefs.current[index] = ref)}
+        ref={videoRef}
         source={{ uri: item.videoUrl }}
         style={styles.video}
         resizeMode={ResizeMode.COVER}
         isLooping
+        shouldPlay
       />
-
-      {/* Pause overlay */}
-      {!playStatus[index] && (
-        <View style={styles.pauseOverlay}>
-          <Image
-            source={require("../../assets/images/play-icon.png")}
-            style={styles.playIcon}
-          />
-        </View>
-      )}
-
+    {/* Add swipe feedback overlay */}
+    <SwipeFeedbackOverlay translateX={translateX} translateY={translateY} />
+    <SwipeIndicators translateX={translateX} translateY={translateY} />
       <View style={styles.overlay}>
         <View style={styles.textContainer}>
           <Text style={styles.videoTitle}>{item.title}</Text>
           <View style={styles.userInfo}>
-            <TouchableOpacity
-              onPress={() => handleMessagePress(item)}
-            >
-              <Text style={styles.username}>@{item.username}</Text>
-            </TouchableOpacity>
             <Text style={styles.uploadTime}>
               {new Date(item.uploadTime).toLocaleDateString()}
             </Text>
           </View>
-          <Text style={styles.videoDescription}>{item.description}</Text>
         </View>
 
         <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={styles.likeContainer} 
-            onPress={() => handleLike(item.id)}
-          >
-            <Image
-              source={likedVideos.includes(item.id) 
-                ? require("../../assets/images/filled-like.png")
-                : require("../../assets/images/empty-like.png")}
-              style={styles.likeIcon}
-            />
-            <Text style={styles.likeCount}>
-              {likes[item.id] || item.likes || 0}
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity 
             style={styles.messageButton} 
             onPress={() => handleMessagePress(item)}
@@ -261,113 +407,111 @@ export default function Home()
   );
 
   return (
-    <View style={styles.container}>
-      {/* Top bar with sort tabs and search bar */}
-      <View style={styles.topBar}>
-        {/* Tab Buttons */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "latest" && styles.activeTabButton,
-            ]}
-            onPress={() => {
-              setActiveTab("latest"); // setVideos();
-            }}
-          >
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === "latest" && styles.activeTabButtonText,
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {/* Top bar with sort tabs and search bar */}
+        <View style={styles.topBar}>
+          {/* Tab Buttons */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                activeTab === "latest" && styles.activeTabButton,
               ]}
-            >Latest</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              activeTab === "trending" && styles.activeTabButton,
-            ]}
-            onPress={() => { 
-              setActiveTab("trending"); // sortVideos();
-            }}
-          >
-            <Text style={[
-              styles.tabButtonText,
-              activeTab === "trending" && styles.activeTabButtonText,
+              onPress={() => {
+                setActiveTab("latest"); // setVideos();
+              }}
+            >
+              <Text style={[
+                styles.tabButtonText,
+                activeTab === "latest" && styles.activeTabButtonText,
+                ]}
+              >Latest</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tabButton,
+                activeTab === "trending" && styles.activeTabButton,
               ]}
-            >Trending</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Search Bar and tag filter*/}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Looking for specific items?"
-            placeholderTextColor="#666"
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          
-          <TouchableOpacity 
-            onPress={() => setShowTagDropdown(!showTagDropdown)}
-            style={styles.filterButton}
-          >
-            <Image
-              source={require("../../assets/images/tag-sort.png")}
-              style={styles.filterIcon}
+              onPress={() => { 
+                setActiveTab("trending"); // sortVideos();
+              }}
+            >
+              <Text style={[
+                styles.tabButtonText,
+                activeTab === "trending" && styles.activeTabButtonText,
+                ]}
+              >Trending</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Search Bar and tag filter*/}
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Looking for specific items?"
+              placeholderTextColor="#666"
+              value={searchQuery}
+              onChangeText={handleSearch}
             />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Label drop-down box */}
-      {showTagDropdown && (
-        <View style={styles.tagDropdown}>
-          <TouchableOpacity 
-            style={[
-              styles.tagItem,
-              selectedTag === null && styles.selectedTagItem
-            ]}
-            onPress={() => filterByTag(null)}
-          >
-            <Text style={styles.tagText}>All Categories</Text>
-          </TouchableOpacity>
-          
-          {Object.values(ItemTag).map((tag) => (
+            
             <TouchableOpacity 
-              key={tag}
+              onPress={() => setShowTagDropdown(!showTagDropdown)}
+              style={styles.filterButton}
+            >
+              <Image
+                source={require("../../assets/images/tag-sort.png")}
+                style={styles.filterIcon}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Label drop-down box */}
+        {showTagDropdown && (
+          <View style={styles.tagDropdown}>
+            <TouchableOpacity 
               style={[
                 styles.tagItem,
-                selectedTag === tag && styles.selectedTagItem
+                selectedTag === null && styles.selectedTagItem
               ]}
-              onPress={() => filterByTag(tag)}
+              onPress={() => filterByTag(null)}
             >
-              <Text style={styles.tagText}>{tag}</Text>
+              <Text style={styles.tagText}>All Categories</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      )}
+            
+            {Object.values(ItemTag).map((tag) => (
+              <TouchableOpacity 
+                key={tag}
+                style={[
+                  styles.tagItem,
+                  selectedTag === tag && styles.selectedTagItem
+                ]}
+                onPress={() => filterByTag(tag)}
+              >
+                <Text style={styles.tagText}>{tag}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-      {/* Video List */}
-      <FlatList
-        data={filteredVideos}
-        keyExtractor={(item) => item.id}
-        renderItem={renderVideo}
-        windowSize={3} // Default is 21, reduce to 3 to save memory
-        initialNumToRender={2} // Initial Render Quantity
-        maxToRenderPerBatch={2} // The number of times to render per scroll
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        onViewableItemsChanged={handleViewableItemsChanged}
-        viewabilityConfig={{
-          viewAreaCoveragePercentThreshold: 80,
-        }}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        style={{ flex: 1 }}
-      />
-    </View>
+        {filteredVideos.length > 0 && currentIndex < filteredVideos.length ? (
+              <GestureDetector gesture={panGesture}>
+                <Animated.View style={[animatedStyle, styles.videoWrapper]}>
+                  {renderVideo(filteredVideos[currentIndex], currentIndex)}
+                </Animated.View>
+              </GestureDetector>
+            ) : (
+              <Text style={styles.endText}>No more videos to show</Text>
+            )}
+
+        {showDescription && (
+          <DescriptionOverlay
+            video={filteredVideos[currentIndex]}
+            onClose={() => setShowDescription(false)}
+          />
+        )}
+      </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -466,24 +610,12 @@ export default function Home()
     },
     // other
     videoContainer: {
-      width: winWidth,
-      height: videoContainerHeight,
+      flex: 1,
       backgroundColor: "#000",
     },
     video: {
       ...StyleSheet.absoluteFillObject,
       opacity: 0.9,
-    },
-    pauseOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: 'rgba(0,0,0,0.4)',
-    },
-    playIcon: {
-      width: 60,
-      height: 60,
-      opacity: 0.7,
     },
     overlay: {
       ...StyleSheet.absoluteFillObject,
@@ -517,7 +649,7 @@ export default function Home()
       marginRight: 10,
     },
     uploadTime: {
-      color: "#AAA",
+      color: "#FFF",
       fontSize: 12,
     },
     videoDescription: {
@@ -553,4 +685,84 @@ export default function Home()
       marginTop: 4,
       fontWeight: '600',
     },
+    videoWrapper: {
+      flex: 1,
+      position: 'relative',
+    },
+    endText: {
+      color: 'white',
+      fontSize: 24,
+      textAlign: 'center',
+      marginTop: 200,
+    },
+
+    overlayContainer: {
+      position: 'absolute',
+      bottom: 0,
+      width: '100%',
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      padding: 20,
+    },
+    overlayTitle: {
+      color: 'white',
+      fontSize: 24,
+      marginBottom: 10,
+    },
+    overlayDescription: {
+      color: 'white',
+      fontSize: 16,
+    },
+    closeButton: {
+      color: 'white',
+      marginTop: 10,
+      textAlign: 'right',
+    },
+
+    swipeIndicatorLeft: {
+      position: 'absolute',
+      left: 100,
+      top: '50%',
+      backgroundColor: '#FF0000', // Bright red
+      opacity: 0.8,
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.5)',
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    swipeIndicatorRight: {
+      position: 'absolute',
+      right: 100,
+      top: '50%',
+      backgroundColor: '#00FF00', // Bright green
+      opacity: 0.8,
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.5)',
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    swipeIndicatorBottom: {
+      position: 'absolute',
+      bottom: 120,
+      alignSelf: 'center',
+      backgroundColor: '#FFFF00', // Bright yellow
+      opacity: 0.8,
+      borderWidth: 2,
+      borderColor: 'rgba(255,255,255,0.5)',
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    indicatorIcon: {
+      width: 40,
+      height: 40,
+      tintColor: 'white',
+    },  
   });
