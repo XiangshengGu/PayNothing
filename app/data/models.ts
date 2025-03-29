@@ -2,6 +2,7 @@ export interface VideoItem {
     id: string;
     title: string;
     username: string;
+    userid: string;
     description: string;
     uploadTime: number;
     likes: number;
@@ -13,6 +14,8 @@ export interface user {
     username: string;
     age: number;
     gender: string;
+    posts: string[];
+    savedVideos: string[];
 }
 
 export enum ItemTag {

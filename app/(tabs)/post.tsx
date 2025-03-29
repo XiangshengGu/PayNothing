@@ -6,7 +6,7 @@ import { Video, ResizeMode } from "expo-av";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView, FlatList } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, arrayUnion } from "firebase/firestore";
 import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
 import { useUserStore } from "../data/store";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -220,6 +220,7 @@ export default function Post() {
     }
 
     try {
+      // create a record of the post
       const docRef = await addDoc(collection(FIRESTORE_DB, "videos"), {
         video_url: downloadURL,
         title: title || "Untitled Video",
@@ -227,9 +228,18 @@ export default function Post() {
         upload_time: Date.now(),
         username: storeUserData?.username || "Unknown User",
         likes: 0,
+        userId: storeUserAuth.uid || '',
         tags: selectedTags || [ItemTag.OTHER],
       });
-      console.log("Record created:", docRef.id);
+      console.log("Post Record created:", docRef.id);
+
+      // add the post record to user's info
+      const userRef = doc(FIRESTORE_DB, "users", storeUserAuth.uid);
+      await updateDoc(userRef, {
+        posts: arrayUnion(docRef.id), // use arrayUnion to add new data
+      });      
+      console.log("User Record Updated:", userRef.id);
+
 
       Alert.alert("Upload successfully", "The video has been saved to the database", [
         {

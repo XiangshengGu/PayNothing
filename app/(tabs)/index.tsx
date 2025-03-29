@@ -213,6 +213,7 @@ export default function Home()
         id: doc.id,
         title: doc.data().title,
         username: doc.data().username || "Unknown User",
+        userid: doc.data().userId || '',
         description: doc.data().description || "Please message me for more information.",
         uploadTime: doc.data().upload_time || 0,
         likes: doc.data().likes || 0,
@@ -261,7 +262,7 @@ export default function Home()
     }
     router.push({
       pathname: "../chat",
-      params: { senderId: video.id, senderUsername: video.username } 
+      params: { senderId: video.id, senderUsername: video.username, receiveId: video.userid }
     });
   };
 

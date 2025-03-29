@@ -38,8 +38,8 @@ export default function Profile() {
   const [age, setAge] = useState("");
   const [isEditingAge, setIsEditingAge] = useState(false);
   const [location, setLocation] = useState("Unknown");
-  const [savedPosts, setSavedPosts] = useState<string[]>(["Saved post 1", "Saved post 2", "Saved post 3", "Saved post 4"]);
-  const [yourPosts, setYourPosts] = useState<string[]>(["Your post 1", "Your post 2", "Your post 3", "Your post 4"]);
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
+  const [yourPosts, setYourPosts] = useState<string[]>([]);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
@@ -86,6 +86,8 @@ export default function Profile() {
           setGender(userData.gender || "");
           setAge(userData.age ? userData.age.toString() : "");
           setLocation(userData.location || "Unknown");
+          setSavedPosts(userData.savedVideos || []);
+          setYourPosts(userData.posts || []);
 
           // update store
           const userDataFromDB = {

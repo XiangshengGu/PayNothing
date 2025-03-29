@@ -10,7 +10,7 @@ import { onAuthStateChanged } from "firebase/auth";
 
 export default function ChatScreen() {
   const router = useRouter();
-  const { senderId, senderUsername } = useLocalSearchParams();
+  const { senderId, senderUsername, receiverId = '' } = useLocalSearchParams();
 //   const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -54,7 +54,7 @@ export default function ChatScreen() {
         conversationId: conversationId,
         senderId: user.uid,
         senderUsername: user.displayName || "Unknown User",
-        receiverId: senderId,
+        receiverId: receiverId,
         text: newMessage,
         timestamp: Date.now(),
       });
