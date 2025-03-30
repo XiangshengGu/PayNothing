@@ -35,7 +35,7 @@ export default function RootLayout() {
       <Stack.Screen name="(tabs)" />
 
       {/* Stack Screen for Chat (will NOT appear in bottom tab bar) */}
-      <Stack.Screen name="chat" options={{ presentation: "card", headerShown: true, title: "Chat" }} />
+      <Stack.Screen name="chat" options={{ presentation: "card", headerShown: false, title: "Chat" }} />
 
       {/* Stack Screen for the User Authentication */}
       <Stack.Screen name="auth" />

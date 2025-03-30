@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert,
-  KeyboardAvoidingView, Platform, SafeAreaView
+  KeyboardAvoidingView, Platform, SafeAreaView, Image
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { collection, addDoc, query, onSnapshot, orderBy, doc, setDoc, where } from "firebase/firestore";
@@ -63,6 +63,10 @@ export default function ChatScreen() {
     }
   };
 
+  const handlePressHeader = () => {
+    router.back();
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <KeyboardAvoidingView
@@ -70,6 +74,12 @@ export default function ChatScreen() {
         style={styles.container}
       >
         <View style={styles.header}>
+          <TouchableOpacity onPress={handlePressHeader} style={styles.backButton}>
+            <Image 
+              source={require("../assets/images/back-arrow.png")} 
+              style={styles.icons}
+            />
+          </TouchableOpacity>
           <Text style={styles.conversationHeader}>Chat with {senderUsername}</Text>
         </View>
 
@@ -116,6 +126,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f4f4",
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
+  },
+  backButton: {
+    position: "absolute",
+    left: 10,
+    zIndex: 1,
+  },
+  icons: {
+    height: 30,
+    width: 30,
   },
   conversationHeader: {
     fontSize: 18,
