@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, Image, StyleSheet } from "react-native";
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  Alert, 
+  Image, 
+  StyleSheet,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform
+} from "react-native";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCredential, PhoneAuthProvider,
-  onAuthStateChanged, User } from "firebase/auth";
-import { FIREBASE_AUTH, firebaseConfig } from "../FirebaseConfig";
+  onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
+import { useUserStore } from "./data/store";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -27,10 +40,26 @@ export default function AuthScreen() {
   });
 
   const router = useRouter();
+  // function of store
+  const { setStoreUser} = useUserStore(); 
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (user: User | null) => {
+    const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (user: User | null) => {
       if (user) {
+        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
+        if (userDoc.exists()) {
+          // update store
+          const userDataFromDB = {
+            username: userDoc.data()?.username || "Unknown User",
+            age: userDoc.data()?.age || 0,
+            gender: userDoc.data()?.gender || "Unknown",
+            posts: userDoc.data()?.posts || [],
+            savedVideos: userDoc.data()?.savedVideos || [],
+          };
+          // console.log('user-auth, user-data', currentUser, userDataFromDB);
+          // set global store of user
+          setStoreUser(user, userDataFromDB);
+        }
         router.replace("/(tabs)");
       }
     });
@@ -40,7 +69,7 @@ export default function AuthScreen() {
   useEffect(() => {
     if (response?.type === "success") {
       const { id_token } = response.params;
-      const credential = Google.GoogleAuthProvider.credential(id_token);
+      const credential = GoogleAuthProvider.credential(id_token);
       signInWithCredential(FIREBASE_AUTH, credential).catch((err) =>
         Alert.alert("Google Sign-In Error", err.message)
       );
@@ -69,7 +98,15 @@ export default function AuthScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+    keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+  >
+    <ScrollView 
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Welcome to PayNothing</Text>
 
       <FirebaseRecaptchaVerifierModal
@@ -79,6 +116,7 @@ export default function AuthScreen() {
       />
 
       {/* Phone Auth */}
+      <View style={styles.authSection}>
       {!verificationId ? (
         <View style={styles.phoneInputContainer}>
           <TextInput
@@ -136,8 +174,9 @@ export default function AuthScreen() {
           </TouchableOpacity>
         </>
       )}
-
+      </View>
       {/* Google Sign-In */}
+      <View style={styles.authSection}>
       <TouchableOpacity
         style={styles.googleButton}
         onPress={() => promptAsync()}
@@ -149,6 +188,7 @@ export default function AuthScreen() {
         />
         <Text style={styles.googleButtonText}>Sign in with Google</Text>
       </TouchableOpacity>
+      </View>
 
       {/* Email / Password Auth */}
       <View style={styles.emailAuthContainer}>
@@ -183,7 +223,8 @@ export default function AuthScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </ScrollView>
+  </KeyboardAvoidingView>
   );
 }
 
@@ -191,15 +232,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 90,
     backgroundColor: "#fff",
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 30,
+    marginBottom: 60,
     color: "#2D3436",
+  },
+  authSection: {
+    marginBottom: 5,
   },
   phoneInputContainer: {
     flexDirection: "row",
@@ -261,7 +305,9 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   emailAuthContainer: {
-    marginTop: 20,
+    marginTop: 10,
+    gap: 15, // Add gap between elements
+    marginBottom: 30,
   },
   separator: {
     textAlign: "center",
@@ -281,6 +327,7 @@ const styles = StyleSheet.create({
   emailButtonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 10, // Add gap between buttons
   },
   emailButton: {
     flex: 1,
