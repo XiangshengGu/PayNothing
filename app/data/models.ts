@@ -8,6 +8,11 @@ export interface VideoItem {
     likes: number;
     videoUrl: string;
     tags: ItemTag[];
+    city: string;
+    location: {
+        latitude: number;
+        longitude: number;
+    } | null;
 }
 
 export interface user {

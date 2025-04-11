@@ -219,6 +219,8 @@ export default function Home()
         likes: doc.data().likes || 0,
         videoUrl: doc.data().video_url,
         tags: doc.data().tags || [ItemTag.OTHER],
+        city: doc.data()?.city || "",
+        location: doc.data()?.location || null,
       }));
 
       setVideos(videoData);

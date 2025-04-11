@@ -2,6 +2,7 @@
 // Expo Camera Documentation: https://docs.expo.dev/versions/latest/sdk/camera/
 
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
+import * as Location from "expo-location";
 import { Video, ResizeMode } from "expo-av";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView, FlatList } from "react-native";
@@ -25,7 +26,12 @@ export default function Post() {
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef<CameraView | null>(null);
   const [videoUri, setVideoUri] = useState<string | null>(null);
-   // 1st frame URI of video
+  // location of the user
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [userCity, setCity] = useState<string>('');
+  const [userLocation, setLocation] = useState<Location.LocationObject | null>(null);
+
+  // 1st frame URI of video
   const [thumbnailUri, setThumbnailUri] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -72,6 +78,12 @@ export default function Post() {
         await requestMicrophonePermission();
       }
 
+      // Location (only request permission here)
+      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locationStatus === "granted") {
+        setLocationPermissionGranted(true);
+      }
+
       // has applied one time
       setHasAutoRequestPermission(true);
     };
@@ -103,15 +115,17 @@ export default function Post() {
     return <View />;
   }
 
-  if (!permission.granted || !microphonePermission.granted) {
+  if (!permission.granted || !microphonePermission.granted || !locationPermissionGranted) {
     return (
       <View style={styles.blackContainer}>
         <Text style={styles.messageTitle}>
           To record in PayNothing
         </Text>
         <Text style={styles.message}>
-          We need your permission to use the camera and microphone.
+          We need your permission to use the camera, microphone, and location.
         </Text>
+  
+        {/* Camera Permission */}
         <TouchableOpacity
           onPress={requestCameraPermission}
           style={[
@@ -124,6 +138,8 @@ export default function Post() {
             Grant Camera Permission{permission.granted && " √"}
           </Text>
         </TouchableOpacity>
+  
+        {/* Microphone Permission */}
         <TouchableOpacity
           onPress={requestMicrophonePermission}
           style={[
@@ -136,9 +152,31 @@ export default function Post() {
             Grant Microphone Permission{microphonePermission.granted && " √"}
           </Text>
         </TouchableOpacity>
+  
+        {/* Location Permission */}
+        <TouchableOpacity
+          onPress={async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === "granted") {
+              setLocationPermissionGranted(true);
+            } else {
+              Alert.alert("Location Required", "You must grant location access to post.");
+            }
+          }}
+          style={[
+            styles.permissionButton,
+            locationPermissionGranted && styles.permissionButtonGranted,
+          ]}
+          disabled={locationPermissionGranted}
+        >
+          <Text style={styles.buttonText}>
+            Grant Location Permission{locationPermissionGranted && " √"}
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
+  
 
   // Start Recording
   const startRecording = async () => {
@@ -198,7 +236,7 @@ export default function Post() {
   };
 
   // create a record in Firestore database
-  const saveVideoRecord = async (downloadURL: string) => {
+  const saveVideoRecord = async (downloadURL: string, location: Location.LocationObject | null, city: string) => {
     if (!storeUserAuth) {
       Alert.alert("Error", "You must be logged in to post!");
       router.replace({
@@ -219,6 +257,8 @@ export default function Post() {
         likes: 0,
         userId: storeUserAuth.uid || '',
         tags: selectedTags || [ItemTag.OTHER],
+        location: location? { latitude: location.coords.latitude, longitude: location.coords.longitude } : null,
+        city: city || '',
       });
       console.log("Post Record created:", docRef.id);
 
@@ -249,13 +289,42 @@ export default function Post() {
       return;
     }
 
+    // Try to get location (required)
+    if (!userLocation || !userCity) {
+      Alert.alert("Location Required", "Please tap to retrieve your current location before uploading.");
+      return;
+    }
+
     Alert.alert("Uploading", "Please wait ...");
 
     const downloadURL = await uploadVideo(videoUri);
     if (downloadURL) {
-      await saveVideoRecord(downloadURL);
+      await saveVideoRecord(downloadURL, userLocation, userCity);
     }
   };
+
+  // get location and city
+  const handleLocationFetch = async () => {
+    try {
+      const currentLocation = await Location.getCurrentPositionAsync({});
+      const geocode = await Location.reverseGeocodeAsync(currentLocation.coords);
+  
+      setLocation(currentLocation);
+  
+      // get city
+      if (geocode.length > 0) {
+        const loc = geocode[0];
+        const parts = [];
+        if (loc.city) parts.push(loc.city);
+        if (loc.region) parts.push(loc.region); // like GA
+        setCity(parts.join(", "));
+      } else {
+        setCity("Unknown Location");
+      }
+    } catch (error) {
+      Alert.alert("Location Error", "Failed to retrieve your current location.");
+    }
+  }; 
 
   return (
     <View style={styles.container}>
@@ -300,6 +369,15 @@ export default function Post() {
                   {description.length}/{MAX_DESCRIPTION_LENGTH}
                 </Text>
               </View>
+            </View>
+
+            {/* Location Display & Click */}
+            <View style={styles.locationContainer}>
+              <TouchableOpacity onPress={handleLocationFetch}>
+                <Text style={styles.locationText}>
+                  {userCity ? `📍 ${userCity}` : "📍 Tap to get current location"}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Tags */}
@@ -430,11 +508,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: "#ddd",
   },
+
+  // location styles
+  locationContainer: {
+    width: "90%",
+    paddingBottom: 20,
+    marginTop: 20,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ddd",
+  },
+  locationText: {
+    color: "#333",
+    fontSize: 14,
+  },
+
+  // tag styles
   tagSelectorContainer: {
     width: "90%",
     marginTop: 0,
     marginBottom: 20,
   },
+
+  // button styles
   permissionButton: {
     marginVertical: 10,
     padding: 10,
