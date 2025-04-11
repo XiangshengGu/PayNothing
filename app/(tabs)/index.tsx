@@ -206,6 +206,16 @@ export default function Home()
     videoRef.current?.playAsync();
   }, [currentIndex]);
 
+  // Pause the video when the page loses focus
+  useFocusEffect(
+    React.useCallback(() => {
+      videoRef.current?.playAsync();
+      return () => {
+        videoRef.current?.pauseAsync();
+      };
+    }, [])
+  );
+
   // Fetch video posts from Firestore with real-time updates
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(FIRESTORE_DB, "videos"), (snapshot) => {

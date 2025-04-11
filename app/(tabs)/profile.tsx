@@ -22,6 +22,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Ionicons } from "@expo/vector-icons";
+import VideoViewModel from '../components/VideoViewModal';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -50,6 +51,10 @@ export default function Profile() {
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
   });
+
+  // show pre/saved posts 
+  const [showModal, setShowModal] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
   const paramOfPage = useLocalSearchParams(); // get route parma
   const { setStoreUser, logout } = useUserStore(); // function of store
@@ -118,6 +123,8 @@ export default function Profile() {
                   likes: videoTempInfo?.likes || 0,
                   videoUrl: videoTempInfo?.video_url || '',
                   tags: videoTempInfo?.tags || [],
+                  city: videoTempInfo?.city || "Unknown",
+                  location: videoTempInfo?.location || null,
                 };
               }
               return null;
@@ -401,13 +408,32 @@ export default function Profile() {
         <Text style={styles.sectionTitle}>Your Posts</Text>
         <FlatList
           data={yourPosts}
-          numColumns={2}
           contentContainerStyle={styles.listContent}
           style={styles.listContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.postItem}>
-              <Text style={styles.postText}>{item.title}</Text>
-              <Text style={styles.postText}>{item.description}</Text>
+            <TouchableOpacity
+              style={styles.postItem}
+              onPress={() => {
+                setSelectedVideo(item);
+                setShowModal(true);
+              }}
+            >
+              <Image
+                source={{ uri: item.videoUrl }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
+              <View style={styles.postInfo}>
+                <Text style={styles.postTitle}>🎬 {item.title}</Text>
+                <Text style={styles.postCity}>📍 {item.city || "Unknown"}</Text>
+                <Text
+                  style={styles.postDescription}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.description}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -415,13 +441,32 @@ export default function Profile() {
         <Text style={styles.sectionTitle}>Saved Posts</Text>
         <FlatList
           data={savedPosts}
-          numColumns={2}
           contentContainerStyle={styles.listContent}
           style={styles.listContainer}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.postItem}>
-              <Text style={styles.postText}>{item.title}</Text>
-              <Text style={styles.postText}>{item.description}</Text>
+            <TouchableOpacity
+              style={styles.postItem}
+              onPress={() => {
+                setSelectedVideo(item);
+                setShowModal(true);
+              }}
+            >
+              <Image
+                source={{ uri: item.videoUrl }}
+                style={styles.thumbnail}
+                resizeMode="cover"
+              />
+              <View style={styles.postInfo}>
+                <Text style={styles.postTitle}>🎬 {item.title}</Text>
+                <Text style={styles.postCity}>📍 {item.city || "Unknown"}</Text>
+                <Text
+                  style={styles.postDescription}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {item.description}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         />
@@ -430,6 +475,12 @@ export default function Profile() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>
+
+      <VideoViewModel
+        visible={showModal}
+        videoToShow={selectedVideo}
+        onClose={() => setShowModal(false)}
+      />
     </View>
   );
 }
@@ -744,27 +795,46 @@ const styles = StyleSheet.create({
   listContent: {
     flexGrow: 0, // This prevents the content from expanding
   },
+  // card-like styles
   postItem: {
-    flex: 1,
-    aspectRatio: 1,
-    margin: 5,
-    backgroundColor: "white",
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 10,
+    marginVertical: 6,
+    marginHorizontal: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    height: 50, // Fixed height for each item
-    maxHeight: 50, // Ensure it doesn't grow beyond this
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: "center",
   },
-  postText: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: 'center',
+  thumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: "#ddd",
+    marginRight: 10,
   },
+  postInfo: {
+    flex: 1,
+  },
+  postTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#222",
+  },
+  postCity: {
+    fontSize: 13,
+    color: "#888",
+    marginVertical: 2,
+  },
+  postDescription: {
+    fontSize: 13,
+    color: "#555",
+  },
+  // following button
   logoutButton: {
     backgroundColor: "#FFA500",
     borderRadius: 15,
