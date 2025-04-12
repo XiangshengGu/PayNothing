@@ -13,6 +13,7 @@ export interface VideoItem {
         latitude: number;
         longitude: number;
     } | null;
+    thumbnail: string;
 }
 
 export interface user {

@@ -4,6 +4,7 @@
 import { CameraView, CameraType, useCameraPermissions, useMicrophonePermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { Video, ResizeMode } from "expo-av";
+import { getThumbnailAsync } from 'expo-video-thumbnails';
 import { useState, useRef, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView, FlatList } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -189,6 +190,18 @@ export default function Post() {
 
         if (video && video.uri) {
           setVideoUri(video.uri);
+
+          // create thumbUri
+          try {
+            const { uri: thumbUri } = await getThumbnailAsync(video.uri, {
+              time: 1000,
+            })
+            setThumbnailUri(thumbUri);
+            console.log("🎬 Thumbnail generated:", thumbUri);
+          } catch (err) {
+            console.warn("❌ Failed to generate thumbnail", err);
+          }
+          
           Alert.alert("Recording complete", "Video saved successfully.");
         } else {
           Alert.alert("Recording failed", "Could not save the video.");
@@ -235,8 +248,25 @@ export default function Post() {
     }
   };
 
+  // upload Thumbnail to storage in Firebase
+  const uploadThumbnail = async (uri: string) => {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = `thumbnails/${Date.now()}.jpg`;
+      const storageRef = ref(FIREBASE_ST, filename);
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log("✅ Thumbnail uploaded:", downloadURL);
+      return downloadURL;
+    } catch (error) {
+      console.error("❌ Thumbnail upload error:", error);
+      return null;
+    }
+  };
+
   // create a record in Firestore database
-  const saveVideoRecord = async (downloadURL: string, location: Location.LocationObject | null, city: string) => {
+  const saveVideoRecord = async (downloadURL: string, location: Location.LocationObject | null, city: string, thumbnailURL: string | null) => {
     if (!storeUserAuth) {
       Alert.alert("Error", "You must be logged in to post!");
       router.replace({
@@ -250,6 +280,7 @@ export default function Post() {
       // create a record of the post
       const docRef = await addDoc(collection(FIRESTORE_DB, "videos"), {
         video_url: downloadURL,
+        thumbnail_url: thumbnailURL || '',
         title: title || "Untitled Video",
         description: description || "No description",
         upload_time: Date.now(),
@@ -298,8 +329,9 @@ export default function Post() {
     Alert.alert("Uploading", "Please wait ...");
 
     const downloadURL = await uploadVideo(videoUri);
+    const thumbnailURL = thumbnailUri ? await uploadThumbnail(thumbnailUri) : null;
     if (downloadURL) {
-      await saveVideoRecord(downloadURL, userLocation, userCity);
+      await saveVideoRecord(downloadURL, userLocation, userCity, thumbnailURL);
     }
   };
 

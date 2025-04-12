@@ -231,6 +231,7 @@ export default function Home()
         tags: doc.data().tags || [ItemTag.OTHER],
         city: doc.data()?.city || "",
         location: doc.data()?.location || null,
+        thumbnail: doc.data()?.thumbnail_url || null,
       }));
 
       setVideos(videoData);

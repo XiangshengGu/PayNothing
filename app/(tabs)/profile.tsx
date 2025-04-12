@@ -125,6 +125,7 @@ export default function Profile() {
                   tags: videoTempInfo?.tags || [],
                   city: videoTempInfo?.city || "Unknown",
                   location: videoTempInfo?.location || null,
+                  thumbnail: videoTempInfo?.thumbnail_url || null,
                 };
               }
               return null;
@@ -419,7 +420,7 @@ export default function Profile() {
               }}
             >
               <Image
-                source={{ uri: item.videoUrl }}
+                source={item?.thumbnail ? { uri: item.thumbnail } : require('../../assets/images/default-thumbnail.png')}
                 style={styles.thumbnail}
                 resizeMode="cover"
               />
@@ -452,7 +453,7 @@ export default function Profile() {
               }}
             >
               <Image
-                source={{ uri: item.videoUrl }}
+                source={item?.thumbnail ? { uri: item.thumbnail } : require('../../assets/images/default-thumbnail.png')}
                 style={styles.thumbnail}
                 resizeMode="cover"
               />

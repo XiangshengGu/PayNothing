@@ -42,7 +42,7 @@
     "expo-symbols": "^0.2.2",
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
-    "expo-video-thumbnails": "~7.0.0",
+    "expo-video-thumbnails": "~9.0.3",
     "firebase": "^11.2.0",
     "ngrok": "^5.0.0-beta.2",
     "react": "18.3.1",
