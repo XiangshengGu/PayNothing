@@ -1,10 +1,12 @@
 import { Tabs, useRouter  } from "expo-router";
 import { Image } from "react-native";
-import { useUserStore } from "../data/store";
+import { FIREBASE_AUTH } from "../../FirebaseConfig";
+// import { useUserStore } from "../data/store";
 
 export default function TabLayout() {
-  const { userAuth } = useUserStore();
+  const user = FIREBASE_AUTH.currentUser;
   const router = useRouter();
+  // const { userAuth } = useUserStore();
 
   return (
     <Tabs
@@ -26,7 +28,7 @@ export default function TabLayout() {
         name="post"
         listeners={{
           tabPress: (e) => {
-            if (!userAuth) {
+            if (!user) {
               e.preventDefault();
               router.replace({
                 pathname: "/profile",

@@ -8,9 +8,9 @@ import { getThumbnailAsync } from 'expo-video-thumbnails';
 import { useState, useRef, useEffect, useCallback } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Alert, Image, TextInput, ScrollView, FlatList } from "react-native";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, doc, updateDoc, arrayUnion } from "firebase/firestore";
-import { FIREBASE_ST, FIRESTORE_DB } from "../../FirebaseConfig";
-import { useUserStore } from "../data/store";
+import { collection, addDoc, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import { FIREBASE_ST, FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
+// import { useUserStore } from "../data/store";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ItemTag } from "../data/models";
 import TagSelector from '../components/TagSelection';
@@ -40,8 +40,23 @@ export default function Post() {
   // item tag
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const { userAuth: storeUserAuth, userData: storeUserData } = useUserStore();
+  // const { userAuth: storeUserAuth, userData: storeUserData } = useUserStore();
+  const storeUserAuth = FIREBASE_AUTH.currentUser;
+  const [storeUserData, setStoreUserData] = useState<any>(null);
   const router = useRouter();
+
+  const fetchUserData = async () => {
+    if (!storeUserAuth) return;
+    // console.log('currentuser', storeUserAuth);
+    try {
+      const userSnap = await getDoc(doc(FIRESTORE_DB, "users", storeUserAuth.uid));
+      if (userSnap.exists()) {
+        setStoreUserData(userSnap.data());
+      }
+    } catch (error) {
+      console.error("Failed to fetch user data:", error);
+    }
+  };
 
   // reset all state
   const resetState = () => {
@@ -58,6 +73,7 @@ export default function Post() {
   // useFocusEffect to listen focusing
   useFocusEffect(
     useCallback(() => {
+      fetchUserData();
       return () => {
           // when lose focusing
           resetState();
@@ -66,31 +82,40 @@ export default function Post() {
   );
 
   // apply for permissions directly
+  const isRequestingRef = useRef(false);
   useEffect(() => {
     const requestPermissions = async () => {
-      if (hasAutoRequestPermission || !permission || !microphonePermission) return;
+      if (hasAutoRequestPermission || isRequestingRef.current) return;
+      if (!permission || !microphonePermission) return;
 
-      // For camera
-      if (!permission.granted) {
-        await requestCameraPermission();
-      }
-      // For microphone
-      if (!microphonePermission.granted) {
-        await requestMicrophonePermission();
-      }
+      isRequestingRef.current = true;
 
-      // Location (only request permission here)
-      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-      if (locationStatus === "granted") {
-        setLocationPermissionGranted(true);
+      try {
+        // For camera
+        if (!permission.granted) {
+          await requestCameraPermission();
+        }
+        // For microphone
+        if (!microphonePermission.granted) {
+          await requestMicrophonePermission();
+        }
+        // Location (only request permission here)
+        const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
+        if (locationStatus === "granted") {
+          setLocationPermissionGranted(true);
+        }
+        // has applied one time
+        setHasAutoRequestPermission(true);
+      } catch (err) {
+        console.error("Permission request failed:", err);
+      } finally {
+        isRequestingRef.current = false;
       }
-
-      // has applied one time
-      setHasAutoRequestPermission(true);
     };
 
     requestPermissions();
-  }, [permission, microphonePermission]);
+  }, [permission?.granted, microphonePermission?.granted]);
+
 
   // listen to isRecording to set timer
   useEffect(() => {

@@ -13,13 +13,13 @@ import {
 } from "react-native";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCredential, PhoneAuthProvider,
   onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useUserStore } from "./data/store";
+// import { useUserStore } from "./data/store";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -41,25 +41,25 @@ export default function AuthScreen() {
 
   const router = useRouter();
   // function of store
-  const { setStoreUser} = useUserStore(); 
+  // const { setStoreUser} = useUserStore(); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (user: User | null) => {
       if (user) {
-        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
-        if (userDoc.exists()) {
-          // update store
-          const userDataFromDB = {
-            username: userDoc.data()?.username || "Unknown User",
-            age: userDoc.data()?.age || 0,
-            gender: userDoc.data()?.gender || "Unknown",
-            posts: userDoc.data()?.posts || [],
-            savedVideos: userDoc.data()?.savedVideos || [],
-          };
-          // console.log('user-auth, user-data', currentUser, userDataFromDB);
-          // set global store of user
-          setStoreUser(user, userDataFromDB);
-        }
+        // const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
+        // if (userDoc.exists()) {
+        //   // update store
+        //   const userDataFromDB = {
+        //     username: userDoc.data()?.username || "Unknown User",
+        //     age: userDoc.data()?.age || 0,
+        //     gender: userDoc.data()?.gender || "Unknown",
+        //     posts: userDoc.data()?.posts || [],
+        //     savedVideos: userDoc.data()?.savedVideos || [],
+        //   };
+        //   // console.log('user-auth, user-data', currentUser, userDataFromDB);
+        //   // set global store of user
+        //   setStoreUser(user, userDataFromDB);
+        // }
         router.replace("/(tabs)");
       }
     });
@@ -90,7 +90,16 @@ export default function AuthScreen() {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-      await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
+      const userCredential = await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
+      const user = userCredential.user;
+      // create new user
+      await setDoc(doc(FIRESTORE_DB, "users", user.uid), {
+        username: email.split("@")[0] || 'Unknown User',
+        age: 0,
+        gender: "Unknown",
+        posts: [],
+        savedVideos: [],
+      });
       setSuccessMessage("Account created! Please log in.");
     } catch (error: any) {
       setErrorMessage(error.message);
