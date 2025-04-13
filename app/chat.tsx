@@ -34,7 +34,20 @@ export default function ChatScreen() {
       );
 
       const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-        setMessages(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const newMessages = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+
+        setMessages(newMessages);
+
+        // Iterate over messages and mark unread ones (sent by the other party) as read.
+        newMessages.forEach((msg) => {
+          if (msg.senderId !== user.uid && !msg.read) {
+            // Update this message document to mark it as read.
+            updateDoc(doc(FIRESTORE_DB, "messages", msg.id), { read: true });
+          }
+        });
       });
 
       return unsubscribe;
@@ -57,6 +70,8 @@ export default function ChatScreen() {
         receiverId: receiverId,
         text: newMessage,
         timestamp: Date.now(),
+        read: false,  // Mark as unread initially (for the recipient)
+        participants: [user.uid, senderId],  // Store both user IDs for this conversation
       });
 
       setNewMessage("");

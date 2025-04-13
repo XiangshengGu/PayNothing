@@ -24,46 +24,58 @@ export default function Inbox() {
     if (user) {
       console.log("Fetching inbox for user:", user.uid);
 
-      // Firestore query: Get messages where the user is either the sender or the receiver
+      // Query: Get messages where the current user is a participant
       const messagesQuery = query(
         collection(FIRESTORE_DB, "messages"),
-        where("participants", "array-contains", user.uid)  // Fetch only the messages related to current user
+        where("participants", "array-contains", user.uid)
       );
 
       const unsubscribe = onSnapshot(messagesQuery, async (snapshot) => {
         if (!snapshot.empty) {
-          const fetchedConversations = new Map(); // Store only one entry per user
+          const fetchedConversations = new Map<string, {
+            id: string;
+            userId: string;
+            username: string;
+            lastMessage: string;
+            timestamp: number;
+            unreadCount: number;
+          }>();
 
-          for (const docSnap of snapshot.docs) {
+          snapshot.docs.forEach((docSnap) => {
             const data = docSnap.data();
             const conversationId = data.conversationId;
             const ids = conversationId.split("_");
             const otherUserId = ids.find((id) => id !== user.uid);
-            if (!otherUserId) continue; // Skip if unable to find the other user
+            if (!otherUserId) return;
 
-            // Check if this user is already in the conversations map
+            // Check if the message is unread (i.e. sent by the other user and not read)
+            const isUnread = data.senderId !== user.uid && !data.read;
+
             if (!fetchedConversations.has(otherUserId)) {
               fetchedConversations.set(otherUserId, {
                 id: conversationId,
                 userId: otherUserId,
-                username: "Unknown User", // To do: get the actual username here, currently it's just a placeholder
+                username: "Unknown User", // You can later update this with actual data
                 lastMessage: data.text,
                 timestamp: data.timestamp,
+                unreadCount: isUnread ? 1 : 0,
               });
             } else {
-              // Update only if this message is more recent
-              const existingData = fetchedConversations.get(otherUserId);
+              const existingData = fetchedConversations.get(otherUserId)!;
+              // Update the last message if the current one is newer
               if (data.timestamp > existingData.timestamp) {
-                fetchedConversations.set(otherUserId, {
-                  ...existingData,
-                  lastMessage: data.text,
-                  timestamp: data.timestamp,
-                });
+                existingData.lastMessage = data.text;
+                existingData.timestamp = data.timestamp;
               }
+              // Accumulate unread messages count
+              if (isUnread) {
+                existingData.unreadCount = (existingData.unreadCount || 0) + 1;
+              }
+              fetchedConversations.set(otherUserId, existingData);
             }
-          }
+          });
 
-          // Convert Map values to array and sort by most recent message
+          // Convert Map values to array and sort by most recent message timestamp.
           const sortedConversations = Array.from(fetchedConversations.values()).sort(
             (a, b) => b.timestamp - a.timestamp
           );
@@ -105,6 +117,10 @@ export default function Inbox() {
               onPress={() => openChat(item.userId, item.username)}
             >
               <Text style={styles.conversationText}>{item.username}</Text>
+              <Text style={styles.conversationInfo}>
+                {new Date(item.timestamp).toLocaleString()}
+                {item.unreadCount > 0 ? ` · ${item.unreadCount} unread` : ""}
+              </Text>
             </TouchableOpacity>
           )}
         />
@@ -139,5 +155,9 @@ const styles = StyleSheet.create({
   conversationText: {
     fontSize: 18,
     fontWeight: "bold",
+  },
+  conversationInfo: {
+    fontSize: 12,
+    color: "#666",
   },
 });
