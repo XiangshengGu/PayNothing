@@ -318,6 +318,7 @@ export default function Profile() {
     if (user) {
       try {
         await updateProfile(user, { displayName: username });
+        await handleUpdateUserData("username", username);
         setIsEditingUsername(false);
         Alert.alert("Username Updated", "Your username has been updated.");
       } catch (error: any) {
