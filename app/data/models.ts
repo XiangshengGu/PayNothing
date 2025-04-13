@@ -5,7 +5,7 @@ export interface VideoItem {
     userid: string;
     description: string;
     uploadTime: number;
-    likes: number;
+    swipeRightCount?: number;
     videoUrl: string;
     tags: ItemTag[];
     city: string;
