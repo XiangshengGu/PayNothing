@@ -60,20 +60,20 @@ export default function Profile() {
   const [showModal, setShowModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
-  const paramOfPage = useLocalSearchParams(); // get route parma
+  // const paramOfPage = useLocalSearchParams(); // get route parma
   const { setStoreUser, logout } = useUserStore(); // function of store
-  const router = useRouter();
+  // const router = useRouter();
 
-  useEffect(() => {
-    if (paramOfPage?.fromPost) {
-      Alert.alert("Login Required", "You must log in before posting a video.");
-      const { fromPost, ...restParams } = paramOfPage;
-      router.replace({
-        pathname: "/profile",
-        params: restParams
-      });
-    }
-  }, [paramOfPage]);
+  // useEffect(() => {
+  //   if (paramOfPage?.fromPost) {
+  //     Alert.alert("Login Required", "You must log in before posting a video.");
+  //     const { fromPost, ...restParams } = paramOfPage;
+  //     router.replace({
+  //       pathname: "/profile",
+  //       params: restParams
+  //     });
+  //   }
+  // }, [paramOfPage]);
 
   // Handle Google Sign-In response
   useEffect(() => {
