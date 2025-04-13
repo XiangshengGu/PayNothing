@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, SafeAreaView, Image
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { collection, addDoc, query, onSnapshot, orderBy, doc, setDoc, where } from "firebase/firestore";
+import { collection, addDoc, query, onSnapshot, orderBy, doc, setDoc, updateDoc, where } from "firebase/firestore";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
