@@ -4,6 +4,7 @@
 // And from Sample Usage in Expo Location Documentation: 
 // https://docs.expo.dev/versions/latest/sdk/location/
 // Created with the assistance of DeepSeek AI (https://www.deepseek.com).
+
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
 import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../../FirebaseConfig";
@@ -11,7 +12,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
          signOut, User, updateProfile,
          PhoneAuthProvider, signInWithCredential,
          GoogleAuthProvider } from "firebase/auth";
-import { doc, setDoc, addDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, addDoc, getDoc, updateDoc } from "firebase/firestore";
 import * as Location from "expo-location";
 import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
@@ -23,6 +24,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Ionicons } from "@expo/vector-icons";
 import VideoViewModel from '../components/VideoViewModal';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -150,6 +154,27 @@ export default function Profile() {
     });
     return unsubscribe; // Cleanup on component unmount
   }, []);
+
+  async function registerForPushNotificationsAsync(uid: string) {
+    if (!Device.isDevice) return;
+  
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+  
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+  
+    if (finalStatus !== 'granted') return;
+  
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const expoPushToken = tokenData.data;
+  
+    await updateDoc(doc(FIRESTORE_DB, "users", uid), {
+      expoPushToken: expoPushToken,
+    });
+  }
 
   const handleLogin = async () => {
     try {
