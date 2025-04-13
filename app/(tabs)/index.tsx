@@ -7,7 +7,7 @@ import { Platform, View, Text, StyleSheet, TouchableOpacity,
 import { Video, ResizeMode } from "expo-av";
 import { useEffect, useRef, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { collection, onSnapshot, doc, updateDoc, increment, arrayUnion } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, getDoc, setDoc, addDoc, arrayUnion } from "firebase/firestore";
 import React from "react";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { VideoItem, ItemTag } from "../data/models";
@@ -67,19 +67,70 @@ export default function Home()
   const [selectedTag, setSelectedTag] = useState<ItemTag | null>(null);
   const navigation = useNavigation();
   const router = useRouter();
+  const user = FIREBASE_AUTH.currentUser;
 
   const handleSwipeComplete = (direction: 'left' | 'right' | 'down') => {
     const currentVideo = filteredVideos[currentIndex];
     
-    // Handle actions
-    if (direction === 'right' && currentVideo) {
-      handleLike(currentVideo.id);
-    } else if (direction === 'down' && currentVideo) {
+    if (!currentVideo) return;
+  
+    if (direction === 'right') {
+      handleLike(currentVideo);
+    } else if (direction === 'left') {
+      handleDislike(currentVideo);
+    } else if (direction === 'down') {
       handleSave(currentVideo.id);
     }
+  };
 
-    // Move to next video
+  const moveToNextVideo = () => {
     setCurrentIndex(prev => (prev + 1) % filteredVideos.length);
+  };
+  
+  const sendPushNotification = async (expoPushToken: string, message: string) => {
+    await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        to: expoPushToken,
+        sound: "default",
+        title: "🎉 New Match!",
+        body: message,
+        data: { screen: "Inbox" },
+      }),
+    });
+  };
+
+  const createChatBetweenUsers = async (uid1: string, uid2: string) => {
+    const chatId = [uid1, uid2].sort().join("_");
+  
+    // Create starter message
+    await addDoc(collection(FIRESTORE_DB, "messages"), {
+      conversationId: chatId,
+      senderId: uid1,
+      receiverId: uid2,
+      senderUsername: user?.displayName || "New Match!",
+      text: "You both matched! Start chatting now 🎉",
+      timestamp: Date.now(),
+      read: false,
+      participants: [uid1, uid2],
+    });
+  
+    // Fetch both push tokens
+    const [snap1, snap2] = await Promise.all([
+      getDoc(doc(FIRESTORE_DB, "users", uid1)),
+      getDoc(doc(FIRESTORE_DB, "users", uid2))
+    ]);
+  
+    const token1 = snap1.data()?.expoPushToken;
+    const token2 = snap2.data()?.expoPushToken;
+  
+    if (token1) await sendPushNotification(token1, "You matched with someone!");
+    if (token2) await sendPushNotification(token2, "You matched with someone!");
   };
 
   const handleSave = async (videoId: string) => {
@@ -95,6 +146,7 @@ export default function Home()
     } catch (error) {
       console.error("Error saving video:", error);
     }
+    moveToNextVideo()
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -190,14 +242,6 @@ export default function Home()
         <Animated.View style={[StyleSheet.absoluteFillObject, overlayStyle]} />
       );
     };
-
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-//       setUser(currentUser);
-//     });
-//     return unsubscribe;
-//   }, []);
-  const user = FIREBASE_AUTH.currentUser;
   
   useEffect(() => {
     translateX.value = 0;
@@ -242,41 +286,53 @@ export default function Home()
     return () => unsubscribe();
   }, []);
 
-  // Handle likes
-  const handleLike = async (videoId: string) => {
-//     if (!user) {
-//       Alert.alert("Login Required", "Please log in to like posts");
-//       return;
-//     }
-    try {
-      const videoRef = doc(FIRESTORE_DB, "videos", videoId);
-      const isLiked = likedVideos.includes(videoId);
-      const incrementValue = isLiked ? -1 : 1;
 
-      await updateDoc(videoRef, { likes: increment(incrementValue) });
-      
-      setLikedVideos(prev => 
-        isLiked ? prev.filter(id => id !== videoId) : [...prev, videoId]
-      );
+  // Handle likes and dislikes
+  const handleLike = async (videoItem: VideoItem) => {
+    if (!user) return;
+  
+    const userId = user.uid;
+    const likedUserId = videoItem.userid;
+  
+    const matchId = `${likedUserId}_${userId}`;
+    const reverseMatchId = `${userId}_${likedUserId}`;
+  
+    const matchRef = doc(FIRESTORE_DB, "matches", matchId);
+    const reverseMatchRef = doc(FIRESTORE_DB, "matches", reverseMatchId);
+  
+    const reverseSnap = await getDoc(reverseMatchRef);
+  
+    if (reverseSnap.exists()) {
+      // It's a match!
+      await setDoc(matchRef, {
+        users: [userId, likedUserId],
+        timestamp: Date.now(),
+      });
+  
+      await createChatBetweenUsers(userId, likedUserId);
+      // TODO: push notification
 
-      setLikes(prev => ({
-        ...prev,
-        [videoId]: (prev[videoId] || 0) + incrementValue
-      }));
-    } catch (error) {
-      console.error("Error updating like:", error);
+    } else {
+      // Pending match
+      await setDoc(matchRef, {
+        pending: true,
+        liker: userId,
+        liked: likedUserId,
+        timestamp: Date.now(),
+      });
     }
+  
+    moveToNextVideo();
   };
-
-  const handleMessagePress = (video: VideoItem) => {
-    if (!user) {
-      Alert.alert("Login Required", "Please log in to send messages");
-      return;
-    }
-    router.push({
-      pathname: "../chat",
-      params: { senderId: video.id, senderUsername: video.username, receiveId: video.userid }
+  
+  const handleDislike = async (videoItem: VideoItem) => {
+    if (!user) return;
+  
+    await updateDoc(doc(FIRESTORE_DB, "users", user.uid), {
+      dislikedVideos: arrayUnion(videoItem.id),
     });
+  
+    moveToNextVideo();
   };
 
   // Sort videos based on active tab
@@ -406,17 +462,6 @@ export default function Home()
           </View>
         </View>
 
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={styles.messageButton} 
-            onPress={() => handleMessagePress(item)}
-          >
-            <Image
-              source={require("../../assets/images/DM-icon.png")}
-              style={styles.dmIcon}
-            />
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
