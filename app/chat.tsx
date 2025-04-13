@@ -102,8 +102,16 @@ export default function ChatScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={[styles.messageContainer, item.senderId === user.uid ? styles.myMessage : styles.theirMessage]}>
+            <View
+              style={[
+                styles.messageContainer,
+                item.senderId === user.uid ? styles.myMessage : styles.theirMessage,
+              ]}
+            >
               <Text style={styles.messageText}>{item.text}</Text>
+              <Text style={styles.messageTimestamp}>
+                {new Date(item.timestamp).toLocaleString()}
+              </Text>
             </View>
           )}
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 10, paddingBottom: 10 }}
@@ -199,5 +207,11 @@ const styles = StyleSheet.create({
   messageText: {
     color: "white",
     fontSize: 16,
+  },
+  messageTimestamp: {
+    fontSize: 10,
+    color: "white",
+    alignSelf: "flex-end",
+    marginTop: 4,
   },
 });
