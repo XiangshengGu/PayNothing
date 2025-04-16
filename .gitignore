@@ -7,4 +7,4 @@ expo-env.d.ts
 node_modules
 .expo
 package-lock.json
-FirebaseConfig.ts
+# FirebaseConfig.ts
