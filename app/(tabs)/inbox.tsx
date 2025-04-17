@@ -4,10 +4,13 @@ import { useRouter } from "expo-router";
 import { collection, query, onSnapshot, getDoc, doc, where } from "firebase/firestore";
 import { FIRESTORE_DB, FIREBASE_AUTH } from "../../FirebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
+import { AdsBanner, InterstitialAdOverlay } from "../components/Ads";
 
 export default function Inbox() {
   const router = useRouter();
   const [conversations, setConversations] = useState([]);
+  const [adType, setAdType] = useState<"banner" | "interstitial" | null>(null);
+  const [showInterstitial, setShowInterstitial] = useState(false);
   const user = FIREBASE_AUTH.currentUser;
 
   useEffect(() => {
@@ -66,7 +69,7 @@ export default function Inbox() {
           return {
             ...conv,
             username: userDoc.exists()
-              ? (userDoc.data()?.username as string) || 'Undefined Username'
+              ? (userDoc.data()?.username as string) || "Undefined Username"
               : "Unknown Username",
           };
         })
@@ -79,6 +82,22 @@ export default function Inbox() {
 
     return () => unsubscribe();
   }, [user]);
+
+  // A/B Test
+  useEffect(() => {
+    const random = Math.random();
+    const type = random < 0.5 ? "banner" : "interstitial";
+    setAdType(type);
+  }, []);
+
+  // show interstitial ads one time
+  useEffect(() => {
+    if (adType === "interstitial") {
+      // wait 500 ms to show
+      const timer = setTimeout(() => setShowInterstitial(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [adType]);
 
   const openChat = (selectedUserId, selectedUsername) => {
     if (!user) return;
@@ -114,6 +133,14 @@ export default function Inbox() {
           )}
         />
       )}
+      {/* banner */}
+      {adType === "banner" && (
+        <View style={{ alignItems: "center", marginTop: 10 }}>
+          <AdsBanner />
+        </View>
+      )}
+      {/* Interstitial */}
+      <InterstitialAdOverlay visible={showInterstitial} onClose={() => setShowInterstitial(false)} />
     </View>
   );
 }
