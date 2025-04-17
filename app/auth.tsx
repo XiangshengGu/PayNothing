@@ -15,66 +15,27 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithC
   onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
-// import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
-import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-// import { useUserStore } from "./data/store";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
-    redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
-  });
-
   const router = useRouter();
-  // function of store
-  // const { setStoreUser} = useUserStore(); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (user: User | null) => {
       if (user) {
-        // const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
-        // if (userDoc.exists()) {
-        //   // update store
-        //   const userDataFromDB = {
-        //     username: userDoc.data()?.username || "Unknown User",
-        //     age: userDoc.data()?.age || 0,
-        //     gender: userDoc.data()?.gender || "Unknown",
-        //     posts: userDoc.data()?.posts || [],
-        //     savedVideos: userDoc.data()?.savedVideos || [],
-        //   };
-        //   // console.log('user-auth, user-data', currentUser, userDataFromDB);
-        //   // set global store of user
-        //   setStoreUser(user, userDataFromDB);
-        // }
         router.replace("/(tabs)");
       }
     });
     return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(FIREBASE_AUTH, credential).catch((err) =>
-        Alert.alert("Google Sign-In Error", err.message)
-      );
-    }
-  }, [response]);
 
   const handleLogin = async () => {
     try {
@@ -119,90 +80,9 @@ export default function AuthScreen() {
     >
       <Text style={styles.title}>Welcome to PayNothing</Text>
 
-      {/* <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-      /> */}
-
-      {/* Phone Auth */}
-      {/* <View style={styles.authSection}>
-      {!verificationId ? (
-        <View style={styles.phoneInputContainer}>
-          <TextInput
-            placeholder="Enter phone number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            style={styles.phoneInput}
-            keyboardType="phone-pad"
-            placeholderTextColor="#666"
-          />
-          <TouchableOpacity
-            style={styles.verifyButton}
-            onPress={async () => {
-              try {
-                const phoneProvider = new PhoneAuthProvider(FIREBASE_AUTH);
-                const vid = await phoneProvider.verifyPhoneNumber(
-                  "+1 " + phoneNumber,
-                  recaptchaVerifier.current!
-                );
-                setVerificationId(vid);
-              } catch (error: any) {
-                Alert.alert("Error", error.message);
-              }
-            }}
-          >
-            <Text style={styles.verifyButtonText}>Send Code</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <TextInput
-            placeholder="Enter verification code"
-            value={verificationCode}
-            onChangeText={setVerificationCode}
-            style={styles.input}
-            keyboardType="number-pad"
-          />
-          <TouchableOpacity
-            style={styles.button}
-            onPress={async () => {
-              try {
-                if (!verificationId) throw new Error("No verification ID");
-                const credential = PhoneAuthProvider.credential(
-                  verificationId,
-                  verificationCode
-                );
-                await signInWithCredential(FIREBASE_AUTH, credential);
-                setVerificationId(null);
-              } catch (error: any) {
-                Alert.alert("Error", error.message);
-              }
-            }}
-          >
-            <Text style={styles.buttonText}>Verify Code</Text>
-          </TouchableOpacity>
-        </>
-      )}
-      </View> */}
-      {/* Google Sign-In */}
-      <View style={styles.authSection}>
-      <TouchableOpacity
-        style={styles.googleButton}
-        onPress={() => promptAsync()}
-        disabled={!request}
-      >
-        <Image
-          source={require("../assets/images/google.png")}
-          style={styles.googleIcon}
-        />
-        <Text style={styles.googleButtonText}>Sign in with Google</Text>
-      </TouchableOpacity>
-      </View>
-
       {/* Email / Password Auth */}
       <View style={styles.emailAuthContainer}>
-        <Text style={styles.separator}>Or use email</Text>
+        <Text style={styles.separator}>Use email</Text>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
