@@ -95,8 +95,9 @@ export default function AuthScreen() {
       // create new user
       await setDoc(doc(FIRESTORE_DB, "users", user.uid), {
         username: email.split("@")[0] || 'Unknown User',
-        age: 0,
+        age: 18,
         gender: "Unknown",
+        location: "",
         posts: [],
         savedVideos: [],
       });

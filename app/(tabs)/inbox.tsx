@@ -66,8 +66,8 @@ export default function Inbox() {
           return {
             ...conv,
             username: userDoc.exists()
-              ? (userDoc.data().username as string)
-              : "Unknown",
+              ? (userDoc.data()?.username as string) || 'Undefined Username'
+              : "Unknown Username",
           };
         })
       );
