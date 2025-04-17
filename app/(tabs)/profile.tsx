@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
          GoogleAuthProvider } from "firebase/auth";
 import { doc, setDoc, addDoc, getDoc, updateDoc } from "firebase/firestore";
 import * as Location from "expo-location";
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+// import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 // import { useUserStore } from "../data/store";
@@ -51,7 +51,7 @@ export default function Profile() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",

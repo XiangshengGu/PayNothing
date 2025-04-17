@@ -15,7 +15,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithC
   onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+// import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
@@ -33,7 +33,7 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
@@ -118,14 +118,14 @@ export default function AuthScreen() {
     >
       <Text style={styles.title}>Welcome to PayNothing</Text>
 
-      <FirebaseRecaptchaVerifierModal
+      {/* <FirebaseRecaptchaVerifierModal
         ref={recaptchaVerifier}
         firebaseConfig={firebaseConfig}
         attemptInvisibleVerification
-      />
+      /> */}
 
       {/* Phone Auth */}
-      <View style={styles.authSection}>
+      {/* <View style={styles.authSection}>
       {!verificationId ? (
         <View style={styles.phoneInputContainer}>
           <TextInput
@@ -183,7 +183,7 @@ export default function AuthScreen() {
           </TouchableOpacity>
         </>
       )}
-      </View>
+      </View> */}
       {/* Google Sign-In */}
       <View style={styles.authSection}>
       <TouchableOpacity
