@@ -27,7 +27,6 @@ import { Ionicons } from "@expo/vector-icons";
 import VideoViewModel from '../components/VideoViewModal';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 WebBrowser.maybeCompleteAuthSession();
@@ -212,14 +211,6 @@ export default function Profile() {
     try {
       await signOut(FIREBASE_AUTH);
       // logout(); // clear global store
-  
-      // Clear saved biometric credentials
-      await AsyncStorage.multiRemove([
-        "biometricEmail",
-        "biometricPassword",
-        "biometricEnabled"
-      ]);
-  
       Alert.alert("Logged Out", "You have been logged out successfully.");
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -900,4 +891,5 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: "center",
   },
+
 });
