@@ -44,7 +44,6 @@ function DescriptionOverlay({ video, onClose }: { video: VideoItem; onClose: () 
 
 export default function Home() 
 {
-//   const [user, setUser] = useState<User | null>(null);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [activeTab, setActiveTab] = useState("latest");
   const [searchQuery, setSearchQuery] = useState("");

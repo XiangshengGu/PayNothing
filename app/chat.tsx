@@ -11,16 +11,8 @@ import { onAuthStateChanged } from "firebase/auth";
 export default function ChatScreen() {
   const router = useRouter();
   const { senderId, senderUsername, receiverId = '' } = useLocalSearchParams();
-//   const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-//       setUser(currentUser);
-//     });
-//     return unsubscribe;
-//   }, []);
   const user = FIREBASE_AUTH.currentUser;
 
   useEffect(() => {

@@ -7,88 +7,77 @@ import { onAuthStateChanged } from "firebase/auth";
 
 export default function Inbox() {
   const router = useRouter();
-//   const [user, setUser] = useState(null);
   const [conversations, setConversations] = useState([]);
-
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, (currentUser) => {
-//       if (currentUser) {
-//         setUser(currentUser);
-//       }
-//     });
-//     return unsubscribe;
-//   }, []);
   const user = FIREBASE_AUTH.currentUser;
 
   useEffect(() => {
-    if (user) {
-      console.log("Fetching inbox for user:", user.uid);
+    if (!user) return;
 
-      // Query: Get messages where the current user is a participant
-      const messagesQuery = query(
-        collection(FIRESTORE_DB, "messages"),
-        where("participants", "array-contains", user.uid)
-      );
+    const messagesQuery = query(
+      collection(FIRESTORE_DB, "messages"),
+      where("participants", "array-contains", user.uid)
+    );
 
-      const unsubscribe = onSnapshot(messagesQuery, async (snapshot) => {
-        if (!snapshot.empty) {
-          const fetchedConversations = new Map<string, {
-            id: string;
-            userId: string;
-            username: string;
-            lastMessage: string;
-            timestamp: number;
-            unreadCount: number;
-          }>();
+    const unsubscribe = onSnapshot(messagesQuery, async (snapshot) => {
+      if (snapshot.empty) {
+        setConversations([]);
+        return;
+      }
 
-          snapshot.docs.forEach((docSnap) => {
-            const data = docSnap.data();
-            const conversationId = data.conversationId;
-            const ids = conversationId.split("_");
-            const otherUserId = ids.find((id) => id !== user.uid);
-            if (!otherUserId) return;
+      // Build map keyed by otherUserId
+      const convMap = new Map<string, {
+        id: string;
+        userId: string;
+        lastMessage: string;
+        timestamp: number;
+        unreadCount: number;
+      }>();
 
-            // Check if the message is unread (i.e. sent by the other user and not read)
-            const isUnread = data.senderId !== user.uid && !data.read;
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const [a, b] = data.conversationId.split("_");
+        const otherUserId = a === user.uid ? b : a;
+        if (!otherUserId) return;
 
-            if (!fetchedConversations.has(otherUserId)) {
-              fetchedConversations.set(otherUserId, {
-                id: conversationId,
-                userId: otherUserId,
-                username: "Unknown User", // You can later update this with actual data
-                lastMessage: data.text,
-                timestamp: data.timestamp,
-                unreadCount: isUnread ? 1 : 0,
-              });
-            } else {
-              const existingData = fetchedConversations.get(otherUserId)!;
-              // Update the last message if the current one is newer
-              if (data.timestamp > existingData.timestamp) {
-                existingData.lastMessage = data.text;
-                existingData.timestamp = data.timestamp;
-              }
-              // Accumulate unread messages count
-              if (isUnread) {
-                existingData.unreadCount = (existingData.unreadCount || 0) + 1;
-              }
-              fetchedConversations.set(otherUserId, existingData);
-            }
+        const isUnread = data.senderId !== user.uid && !data.read;
+        const existing = convMap.get(otherUserId);
+
+        if (!existing) {
+          convMap.set(otherUserId, {
+            id: data.conversationId,
+            userId: otherUserId,
+            lastMessage: data.text,
+            timestamp: data.timestamp,
+            unreadCount: isUnread ? 1 : 0,
           });
-
-          // Convert Map values to array and sort by most recent message timestamp.
-          const sortedConversations = Array.from(fetchedConversations.values()).sort(
-            (a, b) => b.timestamp - a.timestamp
-          );
-
-          console.log("Fetched conversations:", sortedConversations);
-          setConversations(sortedConversations);
         } else {
-          console.log("No past conversations found.");
+          if (data.timestamp > existing.timestamp) {
+            existing.lastMessage = data.text;
+            existing.timestamp = data.timestamp;
+          }
+          if (isUnread) existing.unreadCount += 1;
         }
       });
 
-      return () => unsubscribe();
-    }
+      // Fetch each other‑user’s username
+      const convs = await Promise.all(
+        Array.from(convMap.values()).map(async (conv) => {
+          const userDoc = await getDoc(doc(FIRESTORE_DB, "users", conv.userId));
+          return {
+            ...conv,
+            username: userDoc.exists()
+              ? (userDoc.data().username as string)
+              : "Unknown",
+          };
+        })
+      );
+
+      // Sort and set
+      convs.sort((a, b) => b.timestamp - a.timestamp);
+      setConversations(convs);
+    });
+
+    return () => unsubscribe();
   }, [user]);
 
   const openChat = (selectedUserId, selectedUsername) => {
