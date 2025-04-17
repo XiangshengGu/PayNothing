@@ -15,8 +15,8 @@
       "package": "com.zhining.paynothing",
       "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#f9f1e5"
       }
     },
     "web": {
