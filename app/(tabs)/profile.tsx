@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../../FirebaseConfig";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
          signOut, User, updateProfile,
@@ -14,10 +15,10 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
          GoogleAuthProvider } from "firebase/auth";
 import { doc, setDoc, addDoc, getDoc, updateDoc } from "firebase/firestore";
 import * as Location from "expo-location";
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+// import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { useUserStore } from "../data/store";
+// import { useUserStore } from "../data/store";
 import { VideoItem } from "../data/models";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
@@ -51,7 +52,7 @@ export default function Profile() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
@@ -62,7 +63,7 @@ export default function Profile() {
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
   // const paramOfPage = useLocalSearchParams(); // get route parma
-  const { setStoreUser, logout } = useUserStore(); // function of store
+  // const { setStoreUser, logout } = useUserStore(); // function of store
   // const router = useRouter();
 
   // useEffect(() => {
@@ -86,75 +87,78 @@ export default function Profile() {
     }
   }, [response]);
 
+  // Update data when getting page focus
+  useFocusEffect(
+    React.useCallback(() => {
+      if (FIREBASE_AUTH.currentUser) {
+        fetchUserDataAndPosts(FIREBASE_AUTH.currentUser.uid);
+      }
+    }, [])
+  );
+
   useEffect(() => {
     const unsubscribe = FIREBASE_AUTH.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", currentUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setUsername(userData.username || "");
-          setGender(userData.gender || "");
-          setAge(userData.age ? userData.age.toString() : "");
-          setLocation(userData.location || "Unknown");
-
-          // update store
-          const userDataFromDB = {
-            username: userDoc.data()?.username || "Unknown User",
-            age: userDoc.data()?.age || 0,
-            gender: userDoc.data()?.gender || "Unknown",
-            posts: userDoc.data()?.posts || [],
-            savedVideos: userDoc.data()?.savedVideos || [],
-          };
-          // console.log('user-auth, user-data', currentUser, userDataFromDB);
-          // set global store of user
-          setStoreUser(currentUser, userDataFromDB);
-
-          // Fetch posts and saved videos data
-          const fetchVideoData = async (videoIds: string[]) => {
-            if (!videoIds || videoIds.length === 0) return [];
-            
-            const videoPromises = videoIds.map(async (videoId) => {
-              const videoDoc = await getDoc(doc(FIRESTORE_DB, "videos", videoId));
-              if (videoDoc.exists()) {
-                const videoTempInfo = videoDoc.data();
-                return {
-                  id: videoId,
-                  title: videoTempInfo?.title || '',
-                  username: videoTempInfo?.username || '',
-                  userid: videoTempInfo?.userId || '',
-                  description: videoTempInfo?.description || '',
-                  uploadTime: videoTempInfo?.upload_time || 0,
-                  likes: videoTempInfo?.likes || 0,
-                  videoUrl: videoTempInfo?.video_url || '',
-                  tags: videoTempInfo?.tags || [],
-                  city: videoTempInfo?.city || "Unknown",
-                  location: videoTempInfo?.location || null,
-                  thumbnail: videoTempInfo?.thumbnail_url || null,
-                };
-              }
-              return null;
-            });
-            
-            const videos = await Promise.all(videoPromises);
-            return videos.filter(video => video !== null);
-          };
-          // Fetch and set posts data
-          const posts = userData.posts || [];
-          const postsWithData = await fetchVideoData(posts);
-          setYourPosts(postsWithData);
-          // console.log('ourPosts', postsWithData);
-
-          // Fetch and set saved videos data
-          const savedVideos = userData.savedVideos || [];
-          const savedVideosWithData = await fetchVideoData(savedVideos);
-          setSavedPosts(savedVideosWithData);
-          // console.log('savedPosts', savedVideosWithData);
-        }
+        await fetchUserDataAndPosts(currentUser.uid); // Calling the encapsulated function
       }
     });
     return unsubscribe; // Cleanup on component unmount
   }, []);
+
+  // update the data and posts
+  const fetchUserDataAndPosts = async (uid: string) => {
+    const userRef = doc(FIRESTORE_DB, "users", uid);
+    const userDoc = await getDoc(userRef);
+    if (!userDoc.exists()) return;
+  
+    const userData = userDoc.data();
+    setUsername(userData.username || "");
+    setGender(userData.gender || "");
+    setAge(userData.age ? userData.age.toString() : "");
+    setLocation(userData.location || "Unknown");
+  
+    // const userDataFromDB = {
+    //   username: userData.username || "Unknown User",
+    //   age: userData.age || 0,
+    //   gender: userData.gender || "Unknown",
+    //   posts: userData.posts || [],
+    //   savedVideos: userData.savedVideos || [],
+    // };
+    // setStoreUser(FIREBASE_AUTH.currentUser, userDataFromDB);
+  
+    const fetchVideoData = async (videoIds: string[]) => {
+      if (!videoIds || videoIds.length === 0) return [];
+      const videoPromises = videoIds.map(async (videoId) => {
+        const videoDoc = await getDoc(doc(FIRESTORE_DB, "videos", videoId));
+        if (videoDoc.exists()) {
+          const data = videoDoc.data();
+          return {
+            id: videoId,
+            title: data.title || '',
+            username: data.username || '',
+            userid: data.userId || '',
+            description: data.description || '',
+            uploadTime: data.upload_time || 0,
+            likes: data.likes || 0,
+            videoUrl: data.video_url || '',
+            tags: data.tags || [],
+            city: data.city || "Unknown",
+            location: data.location || null,
+            thumbnail: data.thumbnail_url || null,
+          };
+        }
+        return null;
+      });
+      const videos = await Promise.all(videoPromises);
+      return videos.filter(v => v !== null);
+    };
+  
+    const posts = userData.posts || [];
+    const saved = userData.savedVideos || [];
+    setYourPosts(await fetchVideoData(posts));
+    setSavedPosts(await fetchVideoData(saved));
+  };
 
   async function registerForPushNotificationsAsync(uid: string) {
     if (!Device.isDevice) return;
@@ -207,7 +211,7 @@ export default function Profile() {
   const handleLogout = async () => {
     try {
       await signOut(FIREBASE_AUTH);
-      logout(); // clear global store
+      // logout(); // clear global store
   
       // Clear saved biometric credentials
       await AsyncStorage.multiRemove([
@@ -293,6 +297,7 @@ export default function Profile() {
     } else {
       setLocation("Location unavailable");
     }
+    await handleUpdateUserData("location", location);
   };
 
   const handleUpdateUserData = async (field: string, value: string | number) => {
