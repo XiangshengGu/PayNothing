@@ -13,18 +13,13 @@ import {
 } from "react-native";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithCredential, PhoneAuthProvider,
   onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+// import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
+import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
-import { useUserStore } from "./data/store";
-
-// import * as Google from "expo-auth-session/providers/google";
-// import { makeRedirectUri } from "expo-auth-session";
-
-import * as LocalAuthentication from "expo-local-authentication";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// import { useUserStore } from "./data/store";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -34,165 +29,81 @@ export default function AuthScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
+
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
+    redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
+  });
 
   const router = useRouter();
   // function of store
-  const { setStoreUser} = useUserStore(); 
-
-  useEffect(() => {
-    const checkBiometricLogin = async () => {
-      const enabled = await AsyncStorage.getItem("biometricEnabled");
-      if (enabled !== "true") return;
-  
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-  
-      if (hasHardware && isEnrolled) {
-        const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: "Login with biometrics",
-          fallbackLabel: "",
-          cancelLabel: "Cancel",
-          disableDeviceFallback: true
-        });
-  
-        if (result.success) {
-          const savedEmail = await AsyncStorage.getItem("biometricEmail");
-          const savedPassword = await AsyncStorage.getItem("biometricPassword");
-  
-          if (savedEmail && savedPassword) {
-            try {
-              await signInWithEmailAndPassword(FIREBASE_AUTH, savedEmail, savedPassword);
-            } catch (err: any) {
-              Alert.alert("Login Error", err.message);
-            }
-          }
-        }
-      }
-    };
-  
-    checkBiometricLogin();
-  }, []);
+  // const { setStoreUser} = useUserStore(); 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(FIREBASE_AUTH, async (user: User | null) => {
       if (user) {
-        const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
-        if (userDoc.exists()) {
-          // update store
-          const userDataFromDB = {
-            username: userDoc.data()?.username || "Unknown User",
-            age: userDoc.data()?.age || 0,
-            gender: userDoc.data()?.gender || "Unknown",
-            posts: userDoc.data()?.posts || [],
-            savedVideos: userDoc.data()?.savedVideos || [],
-          };
-          // console.log('user-auth, user-data', currentUser, userDataFromDB);
-          // set global store of user
-          setStoreUser(user, userDataFromDB);
-        }
+        // const userDoc = await getDoc(doc(FIRESTORE_DB, "users", user.uid));
+        // if (userDoc.exists()) {
+        //   // update store
+        //   const userDataFromDB = {
+        //     username: userDoc.data()?.username || "Unknown User",
+        //     age: userDoc.data()?.age || 0,
+        //     gender: userDoc.data()?.gender || "Unknown",
+        //     posts: userDoc.data()?.posts || [],
+        //     savedVideos: userDoc.data()?.savedVideos || [],
+        //   };
+        //   // console.log('user-auth, user-data', currentUser, userDataFromDB);
+        //   // set global store of user
+        //   setStoreUser(user, userDataFromDB);
+        // }
         router.replace("/(tabs)");
       }
     });
     return unsubscribe;
   }, []);
 
-  const handleBiometricTap = async () => {
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      const credential = GoogleAuthProvider.credential(id_token);
+      signInWithCredential(FIREBASE_AUTH, credential).catch((err) =>
+        Alert.alert("Google Sign-In Error", err.message)
+      );
+    }
+  }, [response]);
+
+  const handleLogin = async () => {
     try {
-      const enabled = await AsyncStorage.getItem("biometricEnabled");
-      if (enabled !== "true") {
-        Alert.alert("Biometric Not Enabled", "You must log in normally first to enable Face ID/Fingerprint.");
-        return;
-      }
-  
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-  
-      if (!hasHardware || !isEnrolled) {
-        Alert.alert("Unavailable", "Your device does not support biometric login.");
-        return;
-      }
-  
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Login with biometrics",
-        fallbackLabel: "",
-        cancelLabel: "Cancel",
-        disableDeviceFallback: true,
-      });
-  
-      if (result.success) {
-        const savedEmail = await AsyncStorage.getItem("biometricEmail");
-        const savedPassword = await AsyncStorage.getItem("biometricPassword");
-  
-        if (savedEmail && savedPassword) {
-          await signInWithEmailAndPassword(FIREBASE_AUTH, savedEmail, savedPassword);
-        } else {
-          Alert.alert("Missing Info", "Stored credentials not found.");
-        }
-      }
-    } catch (err: any) {
-      Alert.alert("Biometric Login Failed", err.message);
+      setErrorMessage("");
+      setSuccessMessage("");
+      await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
+    } catch (error: any) {
+      setErrorMessage("Invalid email or password. Please try again.");
     }
   };
-
-const handleLogin = async () => {
-  try {
-    setErrorMessage("");
-    setSuccessMessage("");
-    await signInWithEmailAndPassword(FIREBASE_AUTH, email, password);
-
-    if (rememberMe) {
-      await AsyncStorage.setItem("rememberedEmail", email);
-    } else {
-      await AsyncStorage.removeItem("rememberedEmail");
-    }
-
-    const enableBiometric = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Login with Face ID or Fingerprint",
-      fallbackLabel: "", // hides fallback option
-      cancelLabel: "Cancel",
-      disableDeviceFallback: true // this disables passcode fallback
-    });
-
-    if (enableBiometric.success) {
-    await AsyncStorage.setItem("biometricEmail", email);
-    await AsyncStorage.setItem("biometricPassword", password);
-    await AsyncStorage.setItem("biometricEnabled", "true");
-    }
-  } catch (error: any) {
-    setErrorMessage("Invalid email or password. Please try again.");
-  }
-};
 
   const handleSignUp = async () => {
     try {
       setErrorMessage("");
       setSuccessMessage("");
-      await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
-      setSuccessMessage("Account created! Please log in.");
-      if (rememberMe) {
-        await AsyncStorage.setItem("rememberedEmail", email);
-      } else {
-        await AsyncStorage.removeItem("rememberedEmail");
-      }
-  
-      const enableBiometric = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Enable biometric login?",
-        cancelLabel: "No",
+      const userCredential = await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
+      const user = userCredential.user;
+      // create new user
+      await setDoc(doc(FIRESTORE_DB, "users", user.uid), {
+        username: email.split("@")[0] || 'Unknown User',
+        age: 18,
+        gender: "Unknown",
+        location: "",
+        posts: [],
+        savedVideos: [],
       });
-  
-      if (enableBiometric.success) {
-        await AsyncStorage.setItem("biometricEmail", email);
-        await AsyncStorage.setItem("biometricPassword", password);
-        await AsyncStorage.setItem("biometricEnabled", "true");
-      }
+      setSuccessMessage("Account created! Please log in.");
     } catch (error: any) {
-      setErrorMessage("Invalid email or password. Please try again.");
+      setErrorMessage(error.message);
     }
   };
 
@@ -208,14 +119,14 @@ const handleLogin = async () => {
     >
       <Text style={styles.title}>Welcome to PayNothing</Text>
 
-      <FirebaseRecaptchaVerifierModal
+      {/* <FirebaseRecaptchaVerifierModal
         ref={recaptchaVerifier}
         firebaseConfig={firebaseConfig}
         attemptInvisibleVerification
-      />
+      /> */}
 
       {/* Phone Auth */}
-      <View style={styles.authSection}>
+      {/* <View style={styles.authSection}>
       {!verificationId ? (
         <View style={styles.phoneInputContainer}>
           <TextInput
@@ -273,7 +184,22 @@ const handleLogin = async () => {
           </TouchableOpacity>
         </>
       )}
+      </View> */}
+      {/* Google Sign-In */}
+      <View style={styles.authSection}>
+      <TouchableOpacity
+        style={styles.googleButton}
+        onPress={() => promptAsync()}
+        disabled={!request}
+      >
+        <Image
+          source={require("../assets/images/google.png")}
+          style={styles.googleIcon}
+        />
+        <Text style={styles.googleButtonText}>Sign in with Google</Text>
+      </TouchableOpacity>
       </View>
+
       {/* Email / Password Auth */}
       <View style={styles.emailAuthContainer}>
         <Text style={styles.separator}>Or use email</Text>
@@ -306,40 +232,6 @@ const handleLogin = async () => {
             <Text style={styles.emailButtonText}>Sign Up</Text>
           </TouchableOpacity>
         </View>
-      </View>
-      <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 10 }}>
-        <TouchableOpacity
-          onPress={handleBiometricTap}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: "#eee",
-            padding: 8,
-            borderRadius: 8
-          }}
-        >
-          <Image
-            source={require("../assets/images/biometric.png")}
-            style={{ width: 24, height: 24, marginRight: 6 }}
-          />
-          <Text>Biometric Login</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 10 }}>
-        <TouchableOpacity
-          style={{
-            height: 20,
-            width: 20,
-            borderRadius: 4,
-            borderWidth: 1,
-            borderColor: "#888",
-            backgroundColor: rememberMe ? "#4caf50" : "#fff",
-            marginRight: 8,
-          }}
-          onPress={() => setRememberMe(!rememberMe)}
-        />
-        <Text style={{ color: "#444" }}>Remember me</Text>
       </View>
     </ScrollView>
   </KeyboardAvoidingView>
