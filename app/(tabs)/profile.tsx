@@ -9,18 +9,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image, FlatList } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { FIREBASE_AUTH, FIRESTORE_DB, firebaseConfig } from "../../FirebaseConfig";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword,
-         signOut, User, updateProfile,
-         PhoneAuthProvider, signInWithCredential,
-         GoogleAuthProvider } from "firebase/auth";
-import { doc, setDoc, addDoc, getDoc, updateDoc } from "firebase/firestore";
+import { signOut, User, updateProfile } from "firebase/auth";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import * as Location from "expo-location";
-// import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-// import { useUserStore } from "../data/store";
 import { VideoItem } from "../data/models";
-import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from 'expo-image-picker';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,11 +25,7 @@ import * as Device from 'expo-device';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function Profile() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [username, setUsername] = useState("newbie");
   const [isEditingUsername, setIsEditingUsername] = useState(false);
@@ -48,43 +37,9 @@ export default function Profile() {
   const [savedPosts, setSavedPosts] = useState<VideoItem[]>([]);
   const [yourPosts, setYourPosts] = useState<VideoItem[]>([]);
 
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [verificationId, setVerificationId] = useState<string | null>(null);
-  // const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
-    redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
-  });
-
   // show pre/saved posts 
   const [showModal, setShowModal] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-
-  // const paramOfPage = useLocalSearchParams(); // get route parma
-  // const { setStoreUser, logout } = useUserStore(); // function of store
-  // const router = useRouter();
-
-  // useEffect(() => {
-  //   if (paramOfPage?.fromPost) {
-  //     Alert.alert("Login Required", "You must log in before posting a video.");
-  //     const { fromPost, ...restParams } = paramOfPage;
-  //     router.replace({
-  //       pathname: "/profile",
-  //       params: restParams
-  //     });
-  //   }
-  // }, [paramOfPage]);
-
-  // Handle Google Sign-In response
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(FIREBASE_AUTH, credential)
-        .catch((error) => Alert.alert('Error', error.message));
-    }
-  }, [response]);
 
   // Update data when getting page focus
   useFocusEffect(
@@ -116,15 +71,6 @@ export default function Profile() {
     setGender(userData.gender || "");
     setAge(userData.age ? userData.age.toString() : "");
     setLocation(userData.location || "Unknown");
-  
-    // const userDataFromDB = {
-    //   username: userData.username || "Unknown User",
-    //   age: userData.age || 0,
-    //   gender: userData.gender || "Unknown",
-    //   posts: userData.posts || [],
-    //   savedVideos: userData.savedVideos || [],
-    // };
-    // setStoreUser(FIREBASE_AUTH.currentUser, userDataFromDB);
   
     const fetchVideoData = async (videoIds: string[]) => {
       if (!videoIds || videoIds.length === 0) return [];
@@ -180,37 +126,9 @@ export default function Profile() {
     });
   }
 
-  const handleLogin = async () => {
-    try {
-      setErrorMessage("");
-      setSuccessMessage("");
-      const userCredential = await signInWithEmailAndPassword(
-        FIREBASE_AUTH,
-        email,
-        password
-      );
-
-      Alert.alert("Login Successful", "Welcome back!");
-    } catch (error: any) {
-      setErrorMessage("Invalid email or password. Please try again.");
-    }
-  };
-
-  const handleSignUp = async () => {
-    try {
-      setErrorMessage("");
-      setSuccessMessage("");
-      await createUserWithEmailAndPassword(FIREBASE_AUTH, email, password);
-      setSuccessMessage("Account created successfully! Please log in.");
-    } catch (error: any) {
-      setErrorMessage(error.message);
-    }
-  };
-
   const handleLogout = async () => {
     try {
       await signOut(FIREBASE_AUTH);
-      // logout(); // clear global store
       Alert.alert("Logged Out", "You have been logged out successfully.");
     } catch (error: any) {
       Alert.alert("Error", error.message);

@@ -1,12 +1,10 @@
 import { Tabs, useRouter  } from "expo-router";
 import { Image } from "react-native";
 import { FIREBASE_AUTH } from "../../FirebaseConfig";
-// import { useUserStore } from "../data/store";
 
 export default function TabLayout() {
   const user = FIREBASE_AUTH.currentUser;
   const router = useRouter();
-  // const { userAuth } = useUserStore();
 
   return (
     <Tabs
