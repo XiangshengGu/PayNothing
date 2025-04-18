@@ -15,7 +15,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithC
   onAuthStateChanged, User, GoogleAuthProvider } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { FIREBASE_AUTH, firebaseConfig, FIRESTORE_DB } from "../FirebaseConfig";
-import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
 import { useRouter } from "expo-router";
@@ -33,7 +32,6 @@ export default function AuthScreen() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     clientId: "115198796724-ledugt1lu3uschiqefiighq20dbs4re3.apps.googleusercontent.com",
     redirectUri: "https://paynothingapp.firebaseapp.com/__/auth/handler",
@@ -109,90 +107,9 @@ export default function AuthScreen() {
     >
       <Text style={styles.title}>Welcome to PayNothing</Text>
 
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaVerifier}
-        firebaseConfig={firebaseConfig}
-        attemptInvisibleVerification
-      />
-
-      {/* Phone Auth */}
-      <View style={styles.authSection}>
-      {!verificationId ? (
-        <View style={styles.phoneInputContainer}>
-          <TextInput
-            placeholder="Enter phone number"
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            style={styles.phoneInput}
-            keyboardType="phone-pad"
-            placeholderTextColor="#666"
-          />
-          <TouchableOpacity
-            style={styles.verifyButton}
-            onPress={async () => {
-              try {
-                const phoneProvider = new PhoneAuthProvider(FIREBASE_AUTH);
-                const vid = await phoneProvider.verifyPhoneNumber(
-                  "+1 " + phoneNumber,
-                  recaptchaVerifier.current!
-                );
-                setVerificationId(vid);
-              } catch (error: any) {
-                Alert.alert("Error", error.message);
-              }
-            }}
-          >
-            <Text style={styles.verifyButtonText}>Send Code</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <TextInput
-            placeholder="Enter verification code"
-            value={verificationCode}
-            onChangeText={setVerificationCode}
-            style={styles.input}
-            keyboardType="number-pad"
-          />
-          <TouchableOpacity
-            style={styles.button}
-            onPress={async () => {
-              try {
-                if (!verificationId) throw new Error("No verification ID");
-                const credential = PhoneAuthProvider.credential(
-                  verificationId,
-                  verificationCode
-                );
-                await signInWithCredential(FIREBASE_AUTH, credential);
-                setVerificationId(null);
-              } catch (error: any) {
-                Alert.alert("Error", error.message);
-              }
-            }}
-          >
-            <Text style={styles.buttonText}>Verify Code</Text>
-          </TouchableOpacity>
-        </>
-      )}
-      </View>
-      {/* Google Sign-In */}
-      <View style={styles.authSection}>
-      <TouchableOpacity
-        style={styles.googleButton}
-        onPress={() => promptAsync()}
-        disabled={!request}
-      >
-        <Image
-          source={require("../assets/images/google.png")}
-          style={styles.googleIcon}
-        />
-        <Text style={styles.googleButtonText}>Sign in with Google</Text>
-      </TouchableOpacity>
-      </View>
-
       {/* Email / Password Auth */}
       <View style={styles.emailAuthContainer}>
-        <Text style={styles.separator}>Or use email</Text>
+        <Text style={styles.separator}>Use email</Text>
 
         {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
