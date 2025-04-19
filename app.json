@@ -2,7 +2,7 @@
   "expo": {
     "name": "PayNothing",
     "slug": "PayNothing",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.zhining.paynothing",
-      "versionCode": 3,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#f9f1e5"

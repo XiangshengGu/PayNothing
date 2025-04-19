@@ -33,7 +33,7 @@ export default function Profile() {
   const [isEditingGender, setIsEditingGender] = useState(false);
   const [age, setAge] = useState("");
   const [isEditingAge, setIsEditingAge] = useState(false);
-  const [location, setLocation] = useState("Unknown");
+  const [location, setLocation] = useState("");
   const [savedPosts, setSavedPosts] = useState<VideoItem[]>([]);
   const [yourPosts, setYourPosts] = useState<VideoItem[]>([]);
 
@@ -202,11 +202,13 @@ export default function Profile() {
 
     if (address.length > 0) {
       const { city, region } = address[0];
-      setLocation(`${city}, ${region}`);
+      const fullLocation = `${city}, ${region}`;
+      setLocation(fullLocation);
+      await handleUpdateUserData("location", fullLocation);
     } else {
       setLocation("Location unavailable");
+      await handleUpdateUserData("location", "Unknown");
     }
-    await handleUpdateUserData("location", location);
   };
 
   const handleUpdateUserData = async (field: string, value: string | number) => {
