@@ -61,6 +61,7 @@ export default function AuthScreen() {
         location: "",
         posts: [],
         savedVideos: [],
+        createdAt: Date.now(),
       });
       setSuccessMessage("Account created! Please log in.");
     } catch (error: any) {
